@@ -2,6 +2,10 @@ import requests
 import time
 from rgbmatrix import RGBMatrix, RGBMatrixOptions
 
+def display_example(matrix):
+    matrix.Fill(255, 0, 0)  # Fill the matrix with red
+    matrix.SwapOnVSync()     # Update the display
+
 def fetch_nfl_scores(api_url):
     response = requests.get(api_url)
     return response.json()
@@ -46,6 +50,8 @@ def main():
 
             # Display scores on the LED matrix
             display_scores(matrix, events)
+
+            display_example(matrix)
 
             time.sleep(60)  # Update scores every 60 seconds
 
