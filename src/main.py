@@ -1,6 +1,6 @@
 import requests
 import time
-from rgbmatrix import RGBMatrix, RGBMatrixOptions
+from rgbmatrix import graphics,RGBMatrix, RGBMatrixOptions
 
 
 def fetch_nfl_scores(api_url):
@@ -14,7 +14,7 @@ def display_scores(matrix, events):
 
     matrix.Clear()
     matrix.Fill(255, 255, 255)  # Set background color (white)
-    matrix.DrawText(offscreen_canvas, font, 10, 16, (255, 0, 0), "NFL Scores")
+    graphics.DrawText(offscreen_canvas, font, 10, 16, color , "NFL Scores")
     offscreen_canvas = matrix.SwapOnVSync(offscreen_canvas)
 
 
@@ -32,7 +32,7 @@ def display_scores(matrix, events):
         print(score_text)
 
         time.sleep(.5)
-        matrix.DrawText(offscreen_canvas, font, 10, y_position, (255, 255, 255), score_text)
+        graphics.DrawText(offscreen_canvas, font, 10, y_position, color, score_text)
         offscreen_canvas = matrix.SwapOnVSync(offscreen_canvas)
         y_position += 16
 
@@ -41,6 +41,7 @@ def main():
     options = RGBMatrixOptions()
     options.rows = 32
     options.cols = 64
+    options.hardware_mapping = 'adafruit-hat'
     options.chain_length = 1
     matrix = RGBMatrix(options=options)
     #API endpoint for real-time NFL scores (replace with your API URL)
