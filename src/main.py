@@ -2,6 +2,7 @@ import requests
 import time
 from rgbmatrix import RGBMatrix, RGBMatrixOptions
 
+#to test on regular pc
 def display_example(matrix):
     matrix.Fill(255, 0, 0)  # Fill the matrix with red
     matrix.SwapOnVSync()     # Update the display
@@ -17,16 +18,19 @@ def display_scores(matrix, events):
 
     y_position = 32
     for event in events:
-        home_info = event["competitions"][0]["competitors"][0]["team"]
-        hteam_name = home_info["displayName"]
-        away_info = event["competitions"][0]["competitors"][1]["team"]
-        ateam_name = away_info["displayName"]
+        home_info = event["competitions"][0]["competitors"][0]
+        hteam_name = home_info["team"]["abbreviation"]
+        away_info = event["competitions"][0]["competitors"][1]
+        ateam_name = away_info["team"]["abbreviation"]
 
         home_score = home_info["score"]
         away_score = away_info["score"]
 
         score_text = f"{hteam_name} {home_score} - {away_score} {ateam_name}"
-        matrix.DrawText(10, y_position, (255, 255, 255), score_text)
+        print(score_text)
+
+        time.sleep(.5)
+        #matrix.DrawText(10, y_position, (255, 255, 255), score_text)
         y_position += 16
 
 def main():
@@ -36,8 +40,7 @@ def main():
     options.cols = 64
     options.chain_length = 1
     matrix = RGBMatrix(options=options)
-
-    # API endpoint for real-time NFL scores (replace with your API URL)
+    #API endpoint for real-time NFL scores (replace with your API URL)
     api_url = "http://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard"
 
     while True:
@@ -49,15 +52,15 @@ def main():
             events = scores_data.get('events', [])
 
             # Display scores on the LED matrix
-            display_scores(matrix, events)
+            display_scores(matrix,events)
 
             display_example(matrix)
 
-            time.sleep(60)  # Update scores every 60 seconds
+            time.sleep(1)  # Update scores every 60 seconds
 
         except Exception as e:
             print(f"Error: {e}")
-            time.sleep(60)  # Retry after 60 seconds if an error occurs
+            time.sleep(5)  # Retry after 60 seconds if an error occurs
 
 if __name__ == "__main__":
     main()
