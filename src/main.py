@@ -1,6 +1,11 @@
 import requests
 import time
-from rgbmatrix import RGBMatrix, RGBMatrixOptions
+from rgbmatrix import graphics,RGBMatrix, RGBMatrixOptions
+
+COLOR = (255,0,0)
+FONT = ImageFont.load_default()
+image = Image.new("RGB", (options.cols, options.rows), color=(0, 0, 0))
+draw = ImageDraw.Draw(image)
 
 #to test on regular pc
 def display_example(matrix):
@@ -17,6 +22,9 @@ def display_scores(matrix, events):
     matrix.DrawText(10, 16, (255, 0, 0), "NFL Scores")
 
     y_position = 32
+    image = Image.new("RGB", (options.cols, options.rows), color=(0, 0, 0))
+    draw = ImageDraw.Draw(image)
+
     for event in events:
         home_info = event["competitions"][0]["competitors"][0]
         hteam_name = home_info["team"]["abbreviation"]
@@ -30,8 +38,15 @@ def display_scores(matrix, events):
         print(score_text)
 
         time.sleep(.5)
-        #matrix.DrawText(10, y_position, (255, 255, 255), score_text)
+
+
+        draw.text((10,0),score_text,font=font,fill=color)
+        rgb_data=image.convert("RGB")
+        pixel_data = rgb_data.getdata()
+
         y_position += 16
+	
+        matrix.SetImage(pixel_data,0,0)
 
 def main():
     # Configure RGB Matrix
