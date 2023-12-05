@@ -1,30 +1,23 @@
 import requests
 import time
-from rgbmatrix import graphics,RGBMatrix, RGBMatrixOptions
+from rgbmatrix import RGBMatrix, RGBMatrixOptions
 
-COLOR = (255,0,0)
-FONT = ImageFont.load_default()
-image = Image.new("RGB", (options.cols, options.rows), color=(0, 0, 0))
-draw = ImageDraw.Draw(image)
-
-#to test on regular pc
-def display_example(matrix):
-    matrix.Fill(255, 0, 0)  # Fill the matrix with red
-    matrix.SwapOnVSync()     # Update the display
 
 def fetch_nfl_scores(api_url):
     response = requests.get(api_url)
     return response.json()
 
 def display_scores(matrix, events):
+    offscreen_canvas= matrix.CreateFrameCanvas()
+    font = graphics.Font()
+    color = graphics.Color(255,0,0)
+
     matrix.Clear()
     matrix.Fill(255, 255, 255)  # Set background color (white)
-    matrix.DrawText(10, 16, (255, 0, 0), "NFL Scores")
+    matrix.DrawText(offscreen_canvas, font, 10, 16, (255, 0, 0), "NFL Scores")
+
 
     y_position = 32
-    image = Image.new("RGB", (options.cols, options.rows), color=(0, 0, 0))
-    draw = ImageDraw.Draw(image)
-
     for event in events:
         home_info = event["competitions"][0]["competitors"][0]
         hteam_name = home_info["team"]["abbreviation"]
@@ -38,15 +31,8 @@ def display_scores(matrix, events):
         print(score_text)
 
         time.sleep(.5)
-
-
-        draw.text((10,0),score_text,font=font,fill=color)
-        rgb_data=image.convert("RGB")
-        pixel_data = rgb_data.getdata()
-
+        matrix.DrawText(offscreen_canvas, font, 10, y_position, (255, 255, 255), score_text)
         y_position += 16
-	
-        matrix.SetImage(pixel_data,0,0)
 
 def main():
     # Configure RGB Matrix
@@ -68,8 +54,6 @@ def main():
 
             # Display scores on the LED matrix
             display_scores(matrix,events)
-
-            display_example(matrix)
 
             time.sleep(1)  # Update scores every 60 seconds
 
