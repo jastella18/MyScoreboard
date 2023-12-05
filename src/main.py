@@ -10,14 +10,15 @@ def fetch_nfl_scores(api_url):
 def display_scores(matrix, events):
     offscreen_canvas= matrix.CreateFrameCanvas()
     font = graphics.Font()
+    font.LoadFont('/home/jastella/sportsdisplay/MyNflScoreboard/rpi-rgb-led-matrix/rpi-rgb-led-matrix/fonts/4x6.bdf')
     color = graphics.Color(255,0,0)
 
     matrix.Clear()
-    matrix.Fill(255, 255, 255)  # Set background color (white)
     graphics.DrawText(offscreen_canvas, font, 10, 16, color , "NFL Scores")
     offscreen_canvas = matrix.SwapOnVSync(offscreen_canvas)
+    time.sleep(2)
 
-
+    matrix.Clear()
     y_position = 32
     for event in events:
         home_info = event["competitions"][0]["competitors"][0]
@@ -31,10 +32,11 @@ def display_scores(matrix, events):
         score_text = f"{hteam_name} {home_score} - {away_score} {ateam_name}"
         print(score_text)
 
-        time.sleep(.5)
-        graphics.DrawText(offscreen_canvas, font, 10, y_position, color, score_text)
+        graphics.DrawText(offscreen_canvas, font, 3, 16, color, score_text)
         offscreen_canvas = matrix.SwapOnVSync(offscreen_canvas)
-        y_position += 16
+        time.sleep(3)
+        matrix.Clear()
+
 
 def main():
     # Configure RGB Matrix
@@ -58,7 +60,7 @@ def main():
             # Display scores on the LED matrix
             display_scores(matrix,events)
 
-            time.sleep(1)  # Update scores every 60 seconds
+            time.sleep(60)  # Update scores every 60 seconds
 
         except Exception as e:
             print(f"Error: {e}")
