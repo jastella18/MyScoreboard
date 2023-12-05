@@ -15,6 +15,7 @@ def display_scores(matrix, events):
     matrix.Clear()
     matrix.Fill(255, 255, 255)  # Set background color (white)
     matrix.DrawText(offscreen_canvas, font, 10, 16, (255, 0, 0), "NFL Scores")
+    offscreen_canvas = matrix.SwapOnVSync(offscreen_canvas)
 
 
     y_position = 32
@@ -32,6 +33,7 @@ def display_scores(matrix, events):
 
         time.sleep(.5)
         matrix.DrawText(offscreen_canvas, font, 10, y_position, (255, 255, 255), score_text)
+        offscreen_canvas = matrix.SwapOnVSync(offscreen_canvas)
         y_position += 16
 
 def main():
