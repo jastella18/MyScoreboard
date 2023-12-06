@@ -1,9 +1,8 @@
 import requests
 import time
-from rgbmatrix import graphics,RGBMatrix, RGBMatrixOptions
+from rgbmatrix import graphics, RGBMatrix, RGBMatrixOptions
 from PIL import Image
 from io import BytesIO
-
 
 def fetch_nfl_scores(api_url):
     response = requests.get(api_url)
@@ -11,22 +10,32 @@ def fetch_nfl_scores(api_url):
 
 def get_logo(abv):
     abvlow = abv.lower()
-    img_ad='/home/jastella/sportsdisplay/MyNflScoreboard/assets/' + abv + '/'+ abvlow + '.png'
+    img_ad = '/home/jastella/sportsdisplay/MyNflScoreboard/assets/Logos/' + abv + '/' + abvlow + '.png'
     return img_ad
 
+def canvaslogo(canvas, image, start_x, start_y):
+    width, height = image.size
+
+    # Iterate through each pixel of the image and set the corresponding pixel on the matrix
+    for y in range(start_y, min(height, start_y + canvas.height)):
+        for x in range(start_x, min(width, start_x + canvas.width)):
+            r, g, b = image.getpixel((x, y))
+            canvas.SetPixel(x - start_x, y - start_y, r, g, b)
+
 def display_scores(matrix, events):
-    offscreen_canvas= matrix.CreateFrameCanvas()
+    offscreen_canvas = matrix.CreateFrameCanvas()
     font = graphics.Font()
     font.LoadFont('/home/jastella/sportsdisplay/MyNflScoreboard/rpi-rgb-led-matrix/rpi-rgb-led-matrix/fonts/4x6.bdf')
-    color = graphics.Color(255,0,0)
+    color = graphics.Color(255, 0, 0)
 
     matrix.Clear()
-    graphics.DrawText(offscreen_canvas, font, 10, 16, color , "NFL Scores")
+    graphics.DrawText(offscreen_canvas, font, 10, 16, color, "NFL Scores")
     offscreen_canvas = matrix.SwapOnVSync(offscreen_canvas)
     time.sleep(2)
 
     matrix.Clear()
     y_position = 32
+
     for event in events:
         home_info = event["competitions"][0]["competitors"][0]
         hteam_name = home_info["team"]["abbreviation"]
@@ -39,21 +48,19 @@ def display_scores(matrix, events):
         home_score = home_info["score"]
         away_score = away_info["score"]
 
-
         hlogo = Image.open(hteam_logo)
-        
         alogo = Image.open(ateam_logo)
 
-        score_text = f"{hteam_name}{home_score} - {away_score} {ateam_name}"
+        score_text = f"{hteam_name} {home_score} - {away_score} {ateam_name}"
         print(score_text)
 
-        graphics.DrawImage(offscreen_canvas,hlogo,5,16)
-        graphics.DrawImage(offscreen_canvas,alogo,37,16)
-        graphics.DrawText(offscreen_canvas, font, 3, 0, color, score_text)
-        
+        canvaslogo(offscreen_canvas, hlogo, 5, 16)
+        canvaslogo(offscreen_canvas, alogo, 37, 16)
+        graphics.DrawText(offscreen_canvas, font, 3, 16, color, score_text)
+
         offscreen_canvas = matrix.SwapOnVSync(offscreen_canvas)
         time.sleep(3)
-        
+
         matrix.Clear()
 
 def main():
@@ -64,7 +71,7 @@ def main():
     options.hardware_mapping = 'adafruit-hat'
     options.chain_length = 1
     matrix = RGBMatrix(options=options)
-    #API endpoint for real-time NFL scores (replace with your API URL)
+    # API endpoint for real-time NFL scores (replace with your API URL)
     api_url = "http://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard"
 
     while True:
@@ -76,7 +83,7 @@ def main():
             events = scores_data.get('events', [])
 
             # Display scores on the LED matrix
-            display_scores(matrix,events)
+            display_scores(matrix, events)
 
             time.sleep(60)  # Update scores every 60 seconds
 
