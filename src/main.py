@@ -1,7 +1,7 @@
 import requests
 import time
 from rgbmatrix import graphics,RGBMatrix, RGBMatrixOptions
-from PTL import Image
+from PIL import Image
 from io import BytesIO
 
 
@@ -9,10 +9,10 @@ def fetch_nfl_scores(api_url):
     response = requests.get(api_url)
     return response.json()
 
-def get_logo(url):
-    response = requests.get(url)
-    image = BytesIO(response.content)
-    return Image.open(image)
+def get_logo(abv):
+    abvlow = abv.lower()
+    img_ad='/home/jastella/sportsdisplay/MyNflScoreboard/assets/' + abv + '/'+ abvlow + '.png'
+    return img_ad
 
 def display_scores(matrix, events):
     offscreen_canvas= matrix.CreateFrameCanvas()
@@ -28,39 +28,33 @@ def display_scores(matrix, events):
     matrix.Clear()
     y_position = 32
     for event in events:
-        offscreen_canvas = matrix.CreateFrameCanvas()
-        matrix.Clear()
-
         home_info = event["competitions"][0]["competitors"][0]
         hteam_name = home_info["team"]["abbreviation"]
-        hteam_logo = home_info["team"]["logo"]
+        hteam_logo = get_logo(hteam_name)
 
         away_info = event["competitions"][0]["competitors"][1]
         ateam_name = away_info["team"]["abbreviation"]
-        ateam_logo = away_info["team"]["logo"]
+        ateam_logo = get_logo(ateam_name)
 
         home_score = home_info["score"]
         away_score = away_info["score"]
 
 
-        hlogo = get_logo(hteam_logo)
-        rgbhlogo = graphics.Image()
-        rgbhlogo.SetImage(hlogo)
-
-        alogo = get_logo(ateam_logo)
-        rgbalogo = graphics.Image()
-        rgbalogo.SetImage(alogo)
+        hlogo = Image.open(hteam_logo)
+        
+        alogo = Image.open(ateam_logo)
 
         score_text = f"{hteam_name}{home_score} - {away_score} {ateam_name}"
         print(score_text)
 
-        graphics.DrawImage(offscreen_canvas,rgbhlogo,5,16)
-        graphics.DrawImage(offscreen_canvas,rgbalogo,37,16)
+        graphics.DrawImage(offscreen_canvas,hlogo,5,16)
+        graphics.DrawImage(offscreen_canvas,alogo,37,16)
         graphics.DrawText(offscreen_canvas, font, 3, 0, color, score_text)
         
         offscreen_canvas = matrix.SwapOnVSync(offscreen_canvas)
         time.sleep(3)
-
+        
+        matrix.Clear()
 
 def main():
     # Configure RGB Matrix
