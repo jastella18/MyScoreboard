@@ -14,12 +14,22 @@ def get_logo(abv):
     return img_ad
 
 def canvaslogo(canvas, image, start_x, start_y):
+    # Convert the image to RGB mode if it's not already
+    if image.mode != 'RGB':
+        image = image.convert('RGB')
+
     width, height = image.size
 
     # Iterate through each pixel of the image and set the corresponding pixel on the matrix
     for y in range(start_y, min(height, start_y + canvas.height)):
         for x in range(start_x, min(width, start_x + canvas.width)):
-            r, g, b = image.getpixel((x, y))
+            try:
+                r, g, b = image.getpixel((x, y))
+            except ValueError:
+                # Handle the case where getpixel returns more than 3 values
+                # (e.g., in the case of images with an alpha channel)
+                r, g, b, _ = image.getpixel((x, y))
+
             canvas.SetPixel(x - start_x, y - start_y, r, g, b)
 
 def display_scores(matrix, events):
