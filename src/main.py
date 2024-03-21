@@ -1,7 +1,6 @@
-import requests
 import time
 from rgbmatrix import graphics, RGBMatrix, RGBMatrixOptions
-from PIL import Image
+from PIL import Image,ImageDraw
 from io import BytesIO
 
 def fetch_nfl_scores(api_url):
@@ -17,26 +16,23 @@ def canvaslogo(canvas, image, start_x, start_y):
     # Convert the image to RGB mode if it's not already
     if image.mode != 'RGB':
         image = image.convert('RGB')
+	
 
-    width, height = image.size
+    image.thumbnail((22,22),Image.ANTIALIAS)
 
-    # Iterate through each pixel of the image and set the corresponding pixel on the matrix
-    for y in range(start_y, min(height, start_y + canvas.height)):
-        for x in range(start_x, min(width, start_x + canvas.width)):
-            try:
-                r, g, b = image.getpixel((x, y))
-            except ValueError:
-                # Handle the case where getpixel returns more than 3 values
-                # (e.g., in the case of images with an alpha channel)
-                r, g, b, _ = image.getpixel((x, y))
+    canvas.SetImage(image,start_x,start_y)
 
-            canvas.SetPixel(x - start_x, y - start_y, r, g, b)
+def getstatus(event):
+    status_details = event["competitions"][0]["status"]
+    return status_details
+    
+
 
 def display_scores(matrix, events):
     offscreen_canvas = matrix.CreateFrameCanvas()
     font = graphics.Font()
     font.LoadFont('/home/jastella/sportsdisplay/MyNflScoreboard/rpi-rgb-led-matrix/rpi-rgb-led-matrix/fonts/4x6.bdf')
-    color = graphics.Color(255, 0, 0)
+    color = graphics.Color(255, 255, 255)
 
     matrix.Clear()
     graphics.DrawText(offscreen_canvas, font, 10, 16, color, "NFL Scores")
@@ -47,6 +43,21 @@ def display_scores(matrix, events):
     y_position = 32
 
     for event in events:
+        status_details = getstatus(event)
+        status = status_details["type"]["description"]
+        if (status ==  "In Progress" or status ==  "Halftime"):
+            clock = status_details["displayClock"]
+            quart =status_details["period"]
+            #down =  event["competitions"][0]["situation"]["downDistanceText"]
+            play = event["competitions"][0]["situation"]["lastPlay"]["text"]
+            passer=event["competitions"][0]["leaders"][0]["leaders"]["athlete"]["shortName"]
+            pyds= event["competitions"][0]["leaders"][0]["leaders"][0]["displayValue"]
+            rusher= event["competitions"][0]["leaders"][1]["leaders"]["athlete"]["shortName"]
+            ryds=event["competitions"][0]["leaders"][1]["leaders"][0]["displayValue"]
+            reciever=event["competitions"][0]["leaders"][2]["leaders"]["athlete"]["shortName"]
+            reyds=event["competitions"][0]["leaders"][2]["leaders"][0]["displayValue"]
+
+
         home_info = event["competitions"][0]["competitors"][0]
         hteam_name = home_info["team"]["abbreviation"]
         hteam_logo = get_logo(hteam_name)
@@ -64,14 +75,32 @@ def display_scores(matrix, events):
         score_text = f"{hteam_name} {home_score} - {away_score} {ateam_name}"
         print(score_text)
 
-        canvaslogo(offscreen_canvas, hlogo, 5, 16)
-        canvaslogo(offscreen_canvas, alogo, 37, 16)
-        graphics.DrawText(offscreen_canvas, font, 3, 16, color, score_text)
+        status_text = f"{quart} {clock}"
+        play_text = f"{play}"
+
+  
+
+        canvaslogo(offscreen_canvas, hlogo, 5,12)
+        canvaslogo(offscreen_canvas, alogo,37, 12)
+        graphics.DrawText(offscreen_canvas, font, 5, 5, color, score_text)
+        if (status ==  "In Progress"):
+            graphics.DrawText(offscreen_canvas, font, 18, 10, color, status_text)
+
+
 
         offscreen_canvas = matrix.SwapOnVSync(offscreen_canvas)
         time.sleep(3)
-
         matrix.Clear()
+
+        if (status ==  "In Progress"):
+            graphics.DrawText(offscreen_canvas, font, 1, 5, color,"{passer}: {pyds}")
+            graphics.DrawText(offscreen_canvas, font, 1, 15, color, "{rusher}: {ryds}")
+            graphics.DrawText(offscreen_canvas, font, 1, 25, color, "{reciever}: {reyds}")
+
+            offscreen_canvas = matrix.SwapOnVSync(offscreen_canvas)
+            time.sleep(3)
+            matrix.Clear()
+
 
 def main():
     # Configure RGB Matrix
@@ -95,7 +124,7 @@ def main():
             # Display scores on the LED matrix
             display_scores(matrix, events)
 
-            time.sleep(60)  # Update scores every 60 seconds
+            time.sleep(10)  # Update scores every 60 seconds
 
         except Exception as e:
             print(f"Error: {e}")
