@@ -3,7 +3,7 @@ import time
 
 api_url = "http://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard"
 
-class API:
+class nfl_api:
     def fetch_nfl_scores():
         response = requests.get(api_url)
         scores_data = response.json()
@@ -46,9 +46,9 @@ class API:
         }
 
     def get_all_events_data():
-        scores_data = API.fetch_nfl_scores()
+        scores_data = nfl_api.fetch_nfl_scores()
         events = scores_data.get('events', [])
-        all_events_data = [API.process_event(event) for event in events]
+        all_events_data = [nfl_api.process_event(event) for event in events]
         return all_events_data
     
 #TESTING PURPOSES
@@ -58,9 +58,15 @@ def main():
         try:
 
             # Extract relevant information from the API response
-            all_events_data = API.get_all_events_data()
+            all_events_data = nfl_api.get_all_events_data()
+            print("Info Successfully Acquired")
+            
+            for leader in all_events_data[0]["leaders"]:
+             print(all_events_data[0]['leaders'][leader])
 
             time.sleep(10)  # Update scores every 60 seconds
+            
+            
 
         except Exception as e:
             print(f"Error: {e}")

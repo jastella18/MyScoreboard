@@ -1,5 +1,5 @@
 import requests
-from nfl_api import API
+from api.nfl_api import nfl_api as API
 from datetime import datetime
 
 all_events_data = API.get_all_events_data()
