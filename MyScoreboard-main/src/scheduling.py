@@ -73,25 +73,42 @@ def rotation_iterator(
 	*,
 	prioritize_in_progress: bool = True,
 	include_empty: bool = False,
+	dynamic_reorder: bool = True,
 ) -> Iterator[List[BaseGame]]:
-	"""Yield batches of games per sport in the specified rotation order.
+	"""Yield batches of games per sport.
 
-	Each yield returns the full list of Game objects for that sport (possibly empty).
-	Caller decides how to display them.
+	Enhancements:
+	  - Within a sport: in-progress first, then pre, then post (if prioritize_in_progress)
+	  - Across sports (if dynamic_reorder): sports with at least one in-progress game
+		are yielded before those without, preserving original relative order inside each group.
 	"""
 	while True:
-		for sport in rotation:
-			games = get_games_for_sport(
-				sport,
-				force_refresh=False,
-			)
-			if prioritize_in_progress:
-				in_prog = [g for g in games if g.state == 'in']
-				post = [g for g in games if g.state == 'post']
-				pre = [g for g in games if g.state == 'pre']
-				games = in_prog + pre + post
-			if games or include_empty:
+		if dynamic_reorder:
+			active_pairs = []  # sports that currently have an in-progress game
+			inactive_pairs = []
+			for sport in rotation:
+				games = get_games_for_sport(sport, force_refresh=False)
+				if prioritize_in_progress:
+					in_prog = [g for g in games if g.state == 'in']
+					post = [g for g in games if g.state == 'post']
+					pre = [g for g in games if g.state == 'pre']
+					games = in_prog + pre + post
+				target = active_pairs if any(g.state == 'in' for g in games) else inactive_pairs
+				if games or include_empty:
+					target.append((sport, games))
+			ordered = active_pairs + inactive_pairs
+			for _, games in ordered:
 				yield games
+		else:
+			for sport in rotation:
+				games = get_games_for_sport(sport, force_refresh=False)
+				if prioritize_in_progress:
+					in_prog = [g for g in games if g.state == 'in']
+					post = [g for g in games if g.state == 'post']
+					pre = [g for g in games if g.state == 'pre']
+					games = in_prog + pre + post
+				if games or include_empty:
+					yield games
 
 
 def next_rotation_snapshot(rotation: Sequence[str] = DEFAULT_ROTATION) -> Dict[str, List[BaseGame]]:

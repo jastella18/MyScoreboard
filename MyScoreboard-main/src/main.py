@@ -95,8 +95,8 @@ def run_rotation(matrix, debug: bool = False):
     last_reload = time.time()
     rotation = tuple(last_cfg.get("rotation", ("nfl", "mlb", "prem")))
     last_empty_notice = 0.0
-    EMPTY_INTERVAL = 4.0  # seconds between placeholder refreshes
-    for games in rotation_iterator(rotation=rotation):
+    EMPTY_INTERVAL = 1.0  # seconds between placeholder refreshes
+    for games in rotation_iterator(rotation=rotation, dynamic_reorder=True):
         # Periodically reload config to allow mode switching by editing file
         if time.time() - last_reload > CONFIG_RELOAD_INTERVAL:
             try:
