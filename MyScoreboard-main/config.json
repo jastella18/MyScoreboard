@@ -1,19 +1,27 @@
 {
-  "active_mode": "all",
+  "active_mode": "mlb_focus",
   "modes": {
     "all": {
       "rotation": ["nfl", "mlb", "prem"],
-      "nfl": {"show_leaders": true, "leader_mode": "all", "per_game_seconds": 6},
-      "mlb": {"show_batting": true, "per_game_seconds": 6},
-      "prem": {"show_leaders": true, "per_game_seconds": 5}
+  "nfl": {"show_leaders": true, "leader_mode": "all", "per_game_seconds": 10},
+  "mlb": {"show_batting": true, "per_game_seconds": 10},
+  "prem": {"show_leaders": true, "per_game_seconds": 8},
+  "duration_multiplier": 1.2
     },
     "nfl_focus": {
       "rotation": ["nfl"],
-      "nfl": {"show_leaders": true, "leader_mode": "all", "per_game_seconds": 7}
+  "nfl": {"show_leaders": true, "leader_mode": "all", "per_game_seconds": 12},
+  "duration_multiplier": 1.2
     },
     "prem_morning": {
       "rotation": ["prem"],
-      "prem": {"show_leaders": true, "per_game_seconds": 5}
+  "prem": {"show_leaders": true, "per_game_seconds": 9},
+  "duration_multiplier": 1.2
+    },
+    "mlb_focus": {
+      "rotation": ["mlb"],
+  "mlb": {"show_batting": true, "per_game_seconds": 14},
+  "duration_multiplier": 1.2
     }
   }
 }

@@ -95,6 +95,7 @@ def run_rotation(matrix, debug: bool = False):
     last_reload = time.time()
     rotation = tuple(last_cfg.get("rotation", ("nfl", "mlb", "prem")))
     last_empty_notice = 0.0
+    EMPTY_INTERVAL = 4.0  # seconds between placeholder refreshes
     for games in rotation_iterator(rotation=rotation):
         # Periodically reload config to allow mode switching by editing file
         if time.time() - last_reload > CONFIG_RELOAD_INTERVAL:
@@ -108,30 +109,36 @@ def run_rotation(matrix, debug: bool = False):
             finally:
                 last_reload = time.time()
 
+        if debug:
+            print(f"[DEBUG] Rotation sport={rotation[0] if rotation else '?'} current_sport_games={len(games)}")
         if not games:
-            if time.time() - last_empty_notice > 10:
+            now = time.time()
+            if now - last_empty_notice > EMPTY_INTERVAL:
                 if debug:
-                    print("[DEBUG] No games fetched yet; showing placeholder")
-                _show_placeholder(matrix, "NO GAMES", "(FETCHING)")
-                last_empty_notice = time.time()
+                    print("[DEBUG] No games fetched for sport; drawing placeholder frame")
+                _show_placeholder(matrix, f"{rotation[0].upper() if rotation else 'SPORT'}", "NO DATA", "FETCHING...")
+                last_empty_notice = now
             continue
         sport = games[0].sport if games else "nfl"
         try:
             if sport == "nfl":
                 nfl_cfg = last_cfg.get("nfl", {})
                 per = float(nfl_cfg.get("per_game_seconds", 6))
+                per *= float(last_cfg.get("duration_multiplier", 1.0))
                 cycle_nfl_games(matrix, games, show_leaders=True, per_game_seconds=per)
                 if nfl_cfg.get("show_leaders", True):
                     cycle_nfl_leaders(matrix, games, mode=nfl_cfg.get("leader_mode", "all"), per_game_seconds=per)
             elif sport == "mlb":
                 mlb_cfg = last_cfg.get("mlb", {})
                 per = float(mlb_cfg.get("per_game_seconds", 6))
+                per *= float(last_cfg.get("duration_multiplier", 1.0))
                 cycle_mlb_games(matrix, games, show_leaders=True, per_game_seconds=per)
                 if mlb_cfg.get("show_batting", True):
                     cycle_mlb_batting(matrix, games, per_game_seconds=per / 2)
             elif sport == "prem":
                 prem_cfg = last_cfg.get("prem", {})
                 per = float(prem_cfg.get("per_game_seconds", 5))
+                per *= float(last_cfg.get("duration_multiplier", 1.0))
                 cycle_prem_games(matrix, games, show_leaders=prem_cfg.get("show_leaders", True), per_game_seconds=per)
             if debug:
                 print(f"[DEBUG] Displayed {len(games)} {sport} games")

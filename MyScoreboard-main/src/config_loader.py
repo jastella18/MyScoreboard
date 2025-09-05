@@ -13,6 +13,8 @@ DEFAULTS: Dict[str, Any] = {
     "nfl": {"show_leaders": True, "leader_mode": "all", "per_game_seconds": 6},
     "mlb": {"show_batting": True, "per_game_seconds": 6},
     "prem": {"show_leaders": True, "per_game_seconds": 5},
+    # Global multiplier applied to each sport's per_game_seconds (allows quick tuning)
+    "duration_multiplier": 1.0,
 }
 
 def load_config(project_root: str) -> Dict[str, Any]:
