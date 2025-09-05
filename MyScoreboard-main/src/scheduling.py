@@ -12,11 +12,11 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Dict, List, Iterable, Iterator, Sequence, Callable, Optional
 
-from api.nfl_api import nfl_api
-from api.mlb_api import mlb_api
-from api.prem_api import prem_api
-from GameClasses.factory import game_from_event
-from GameClasses.base import BaseGame
+from .api.nfl_api import nfl_api
+from .api.mlb_api import mlb_api
+from .api.prem_api import prem_api
+from .GameClasses.factory import game_from_event
+from .GameClasses.base import BaseGame
 
 # --------------------------- Configuration ---------------------------------
 DEFAULT_ROTATION: Sequence[str] = ("nfl", "mlb", "prem")

@@ -6,7 +6,7 @@ iterate through all current games.
 from __future__ import annotations
 import time
 from typing import Iterable, List
-from GameClasses.nflGame import NFLGame
+from ..GameClasses.nflGame import NFLGame
 from .common import prepare_lines, draw_frame
 
 

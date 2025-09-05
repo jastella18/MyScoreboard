@@ -2,7 +2,7 @@
 from __future__ import annotations
 import time
 from typing import Iterable, List
-from GameClasses.mlbGame import MLBGame
+from ..GameClasses.mlbGame import MLBGame
 from .common import prepare_lines, draw_frame
 
 

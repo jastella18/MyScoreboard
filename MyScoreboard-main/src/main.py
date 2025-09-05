@@ -64,13 +64,24 @@ except Exception:  # Library not available -> provide light stubs
             pass
 
 
-from scheduling import rotation_iterator
-from Screens.nflGameScreen import cycle_games as cycle_nfl_games
-from Screens.mlbGameScreen import cycle_games as cycle_mlb_games
-from Screens.premGameScreen import cycle_games as cycle_prem_games
-from Screens.yardsLeaders import cycle_leaders as cycle_nfl_leaders
-from Screens.battingLeaders import cycle_batting as cycle_mlb_batting
-from config_loader import load_config
+"""NOTE ON IMPORTS
+
+All intra-package imports use explicit relative form (``from .scheduling`` etc.)
+so the project must be executed as a module:
+
+    python -m src.main
+
+Running ``python src/main.py`` will no longer work because relative imports
+require package context. A convenience ``run.py`` wrapper is added at repo root.
+"""
+
+from .scheduling import rotation_iterator
+from .Screens.nflGameScreen import cycle_games as cycle_nfl_games
+from .Screens.mlbGameScreen import cycle_games as cycle_mlb_games
+from .Screens.premGameScreen import cycle_games as cycle_prem_games
+from .Screens.yardsLeaders import cycle_leaders as cycle_nfl_leaders
+from .Screens.battingLeaders import cycle_batting as cycle_mlb_batting
+from .config_loader import load_config
 
 CONFIG_RELOAD_INTERVAL = 30  # seconds
 

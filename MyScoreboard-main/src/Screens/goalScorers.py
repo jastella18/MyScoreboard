@@ -4,7 +4,7 @@ Consumes PremGame objects for rendering.
 """
 from __future__ import annotations
 from typing import List
-from GameClasses.premGame import PremGame
+from ..GameClasses.premGame import PremGame
 
 
 def goal_scorer_lines(game: PremGame) -> List[str]:

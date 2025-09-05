@@ -2,7 +2,7 @@
 from __future__ import annotations
 import time
 from typing import Iterable, List
-from GameClasses.premGame import PremGame
+from ..GameClasses.premGame import PremGame
 from .common import prepare_lines, draw_frame
 
 

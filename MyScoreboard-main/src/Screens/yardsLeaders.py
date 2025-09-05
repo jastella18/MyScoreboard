@@ -5,7 +5,7 @@ Uses NFLGame objects' leaders dict produced by api layer.
 from __future__ import annotations
 import time
 from typing import Iterable, List, Callable
-from GameClasses.nflGame import NFLGame
+from ..GameClasses.nflGame import NFLGame
 from .common import prepare_lines, draw_frame
 
 
