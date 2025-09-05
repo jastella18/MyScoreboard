@@ -1,0 +1,19 @@
+{
+  "active_mode": "all",
+  "modes": {
+    "all": {
+      "rotation": ["nfl", "mlb", "prem"],
+      "nfl": {"show_leaders": true, "leader_mode": "all", "per_game_seconds": 6},
+      "mlb": {"show_batting": true, "per_game_seconds": 6},
+      "prem": {"show_leaders": true, "per_game_seconds": 5}
+    },
+    "nfl_focus": {
+      "rotation": ["nfl"],
+      "nfl": {"show_leaders": true, "leader_mode": "all", "per_game_seconds": 7}
+    },
+    "prem_morning": {
+      "rotation": ["prem"],
+      "prem": {"show_leaders": true, "per_game_seconds": 5}
+    }
+  }
+}
