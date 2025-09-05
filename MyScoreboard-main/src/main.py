@@ -8,12 +8,15 @@ Windows for development).
 """
 import os
 import time
+import argparse
 from typing import List
 
 
+USING_STUB = False
 try:  # pragma: no cover - hardware import
     from rgbmatrix import graphics, RGBMatrix, RGBMatrixOptions  # type: ignore
 except Exception:  # Library not available -> provide light stubs
+    USING_STUB = True
     class _Color:
         def __init__(self, r, g, b):
             self.r, self.g, self.b = r, g, b
@@ -129,19 +132,56 @@ def run_rotation(matrix):
             time.sleep(1)
 
 
-def main():
-    # Configure RGB Matrix (safe defaults; ignore if stub implementation)
-    options = RGBMatrixOptions()
-    # These attributes may not exist in stub, so set conditionally
-    for attr, val in {"rows": 32, "cols": 64, "hardware_mapping": "adafruit-hat", "chain_length": 1}.items():
+def parse_args():
+    parser = argparse.ArgumentParser(description="Multi-sport LED scoreboard")
+    parser.add_argument("--rows", type=int, default=int(os.getenv("MATRIX_ROWS", 32)))
+    parser.add_argument("--cols", type=int, default=int(os.getenv("MATRIX_COLS", 64)))
+    parser.add_argument("--chain", type=int, default=int(os.getenv("MATRIX_CHAIN", 1)))
+    parser.add_argument("--parallel", type=int, default=int(os.getenv("MATRIX_PARALLEL", 1)))
+    parser.add_argument("--hardware-mapping", default=os.getenv("MATRIX_HW", "adafruit-hat"))
+    parser.add_argument("--brightness", type=int, default=int(os.getenv("MATRIX_BRIGHTNESS", 80)))
+    parser.add_argument("--gpio-slowdown", type=int, default=int(os.getenv("MATRIX_GPIO_SLOWDOWN", 2)))
+    parser.add_argument("--no-led", action="store_true", help="Force stub mode even if library present (debug)")
+    return parser.parse_args()
+
+
+def build_matrix(args):
+    if USING_STUB or args.no_led:
+        if USING_STUB and not args.no_led:
+            print("[INFO] rgbmatrix lib not found – using console stub (no LED output).")
+        else:
+            print("[INFO] Forced no-led mode – using console stub.")
+        return RGBMatrix()
+    opts = RGBMatrixOptions()
+    # Defensive attribute setting
+    for attr, val in {
+        "rows": args.rows,
+        "cols": args.cols,
+        "chain_length": args.chain,
+        "parallel": args.parallel,
+        "hardware_mapping": args.hardware_mapping,
+        "brightness": max(1, min(100, args.brightness)),
+        "gpio_slowdown": args.gpio_slowdown,
+    }.items():
         try:
-            setattr(options, attr, val)
+            setattr(opts, attr, val)
         except Exception:
             pass
     try:
-        matrix = RGBMatrix(options=options)
-    except Exception:
+        matrix = RGBMatrix(options=opts)
+        print(f"[INFO] RGBMatrix init OK {args.cols}x{args.rows} chain={args.chain} parallel={args.parallel} brightness={args.brightness}")
+    except Exception as exc:
+        print(f"[WARN] RGBMatrix init failed ({exc}); falling back to stub.")
         matrix = RGBMatrix()
+    return matrix
+
+
+def main():
+    args = parse_args()
+    matrix = build_matrix(args)
+    if USING_STUB and not args.no_led:
+        print("[HINT] Install hzeller/rpi-rgb-led-matrix on the Pi for real LED output.")
+    print("[INFO] Starting rotation loop. Press Ctrl+C to exit.")
     try:
         run_rotation(matrix)
     except KeyboardInterrupt:
