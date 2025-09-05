@@ -89,11 +89,12 @@ from .config_loader import load_config
 CONFIG_RELOAD_INTERVAL = 30  # seconds
 
 
-def run_rotation(matrix):
+def run_rotation(matrix, debug: bool = False):
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     last_cfg = load_config(project_root)
     last_reload = time.time()
     rotation = tuple(last_cfg.get("rotation", ("nfl", "mlb", "prem")))
+    last_empty_notice = 0.0
     for games in rotation_iterator(rotation=rotation):
         # Periodically reload config to allow mode switching by editing file
         if time.time() - last_reload > CONFIG_RELOAD_INTERVAL:
@@ -108,6 +109,11 @@ def run_rotation(matrix):
                 last_reload = time.time()
 
         if not games:
+            if time.time() - last_empty_notice > 10:
+                if debug:
+                    print("[DEBUG] No games fetched yet; showing placeholder")
+                _show_placeholder(matrix, "NO GAMES", "(FETCHING)")
+                last_empty_notice = time.time()
             continue
         sport = games[0].sport if games else "nfl"
         try:
@@ -127,6 +133,8 @@ def run_rotation(matrix):
                 prem_cfg = last_cfg.get("prem", {})
                 per = float(prem_cfg.get("per_game_seconds", 5))
                 cycle_prem_games(matrix, games, show_leaders=prem_cfg.get("show_leaders", True), per_game_seconds=per)
+            if debug:
+                print(f"[DEBUG] Displayed {len(games)} {sport} games")
         except Exception as exc:
             print(f"Display error [{sport}]: {exc}")
             time.sleep(1)
@@ -142,6 +150,8 @@ def parse_args():
     parser.add_argument("--brightness", type=int, default=int(os.getenv("MATRIX_BRIGHTNESS", 80)))
     parser.add_argument("--gpio-slowdown", type=int, default=int(os.getenv("MATRIX_GPIO_SLOWDOWN", 2)))
     parser.add_argument("--no-led", action="store_true", help="Force stub mode even if library present (debug)")
+    parser.add_argument("--test-pattern", action="store_true", help="Show a test pattern then exit")
+    parser.add_argument("--debug", action="store_true", help="Verbose debug logging")
     return parser.parse_args()
 
 
@@ -181,11 +191,43 @@ def main():
     matrix = build_matrix(args)
     if USING_STUB and not args.no_led:
         print("[HINT] Install hzeller/rpi-rgb-led-matrix on the Pi for real LED output.")
+    if args.test_pattern:
+        _show_test_pattern(matrix)
+        return
     print("[INFO] Starting rotation loop. Press Ctrl+C to exit.")
     try:
-        run_rotation(matrix)
+        run_rotation(matrix, debug=args.debug)
     except KeyboardInterrupt:
         print("Exiting...")
+
+
+def _show_placeholder(matrix, *lines: str):
+    try:
+        from .Screens.common import draw_frame
+    except Exception:
+        return
+    canvas = matrix.CreateFrameCanvas()
+    draw_frame(canvas, list(lines)[:4])
+    matrix.SwapOnVSync(canvas)
+
+
+def _show_test_pattern(matrix):
+    try:
+        from rgbmatrix import graphics  # type: ignore
+    except Exception:
+        pass
+    canvas = matrix.CreateFrameCanvas()
+    # Attempt colored gradient if SetPixel exists
+    for x in range(64):
+        for y in range(32):
+            try:
+                canvas.SetPixel(x, y, (x*4)%256, (y*8)%256, ((x+y)*2)%256)  # type: ignore[attr-defined]
+            except Exception:
+                break
+    from .Screens.common import draw_frame
+    draw_frame(canvas, ["TEST", "PATTERN", "OK"], center=True)
+    matrix.SwapOnVSync(canvas)
+    print("[INFO] Test pattern shown.")
 
 if __name__ == "__main__":
     main()
