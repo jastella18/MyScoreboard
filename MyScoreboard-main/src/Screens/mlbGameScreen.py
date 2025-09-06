@@ -121,15 +121,30 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 			if r_med: blit_med(r_med, width - r_med.size[0], 0)
 			def last_name(obj, role: str):
 				"""Extract probable pitcher's last name from various possible structures.
-				Supports attributes or dict keys: probable_pitcher, starting_pitcher, pitcher, probables(list)."""
+				Supports attributes or dict keys: probable_pitcher, starting_pitcher, pitcher, probablePitcher, probables(list).
+				Adds heuristic scan of any attribute/key containing 'pitch'."""
 				# 1. Direct attributes/dict entries
 				candidates = []
-				for attr in ("probable_pitcher", "starting_pitcher", "pitcher"):
+				for attr in ("probable_pitcher", "starting_pitcher", "pitcher", "probablePitcher"):
 					val = getattr(obj, attr, None)
 					if not val and isinstance(obj, dict):
 						val = obj.get(attr)
 					if val:
 						candidates.append(val)
+				# 1b. Heuristic scan for ANY attribute/key containing 'pitch'
+				try:
+					for attr_name in dir(obj):
+						if 'pitch' in attr_name.lower():
+							val = getattr(obj, attr_name, None)
+							if val and val not in candidates:
+								candidates.append(val)
+				except Exception:
+					pass
+				if isinstance(obj, dict):
+					for k,v in obj.items():
+						if isinstance(k,str) and 'pitch' in k.lower():
+							if v and v not in candidates:
+								candidates.append(v)
 				# 2. Probables list (ESPn style): obj.probables -> list of dicts with athlete.fullName / displayName
 				prob_list = getattr(obj, 'probables', None)
 				if not prob_list and isinstance(obj, dict):
@@ -202,10 +217,16 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 							return parts[-1][:8].upper()
 				return ""
 			away_p = last_name(game.away, 'away'); home_p = last_name(game.home, 'home')
-			if l_med and away_p:
+			if not away_p: away_p = '?'
+			if not home_p: home_p = '?'
+			try:
+				print('[PITCH DBG pre-medium]', 'away', away_p, 'home', home_p)
+			except Exception:
+				pass
+			if l_med and away_p and away_p != '?':
 				w_logo = l_med.size[0]; px = max(0, (w_logo - len(away_p)*4)//2)
 				graphics.DrawText(canvas, font, px, MED + 1, white, away_p)
-			if r_med and home_p:
+			if r_med and home_p and home_p != '?':
 				w_logo = r_med.size[0]; start_x = width - w_logo + max(0, (w_logo - len(home_p)*4)//2)
 				graphics.DrawText(canvas, font, start_x, MED + 1, white, home_p)
 			bold_font = FontManager.get_font(bold=True)
@@ -299,12 +320,25 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 			# Probable pitcher last names (fallback if not available)
 			def last_name(obj, role: str):
 				candidates = []
-				for attr in ("probable_pitcher", "starting_pitcher", "pitcher"):
+				for attr in ("probable_pitcher", "starting_pitcher", "pitcher", "probablePitcher"):
 					val = getattr(obj, attr, None)
 					if not val and isinstance(obj, dict):
 						val = obj.get(attr)
 					if val:
 						candidates.append(val)
+				try:
+					for attr_name in dir(obj):
+						if 'pitch' in attr_name.lower():
+							val = getattr(obj, attr_name, None)
+							if val and val not in candidates:
+								candidates.append(val)
+				except Exception:
+					pass
+				if isinstance(obj, dict):
+					for k,v in obj.items():
+						if isinstance(k,str) and 'pitch' in k.lower():
+							if v and v not in candidates:
+								candidates.append(v)
 				prob_list = getattr(obj, 'probables', None)
 				if not prob_list and isinstance(obj, dict):
 					prob_list = obj.get('probables')
@@ -364,12 +398,18 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 				return ""
 			away_p = last_name(game.away, 'away')
 			home_p = last_name(game.home, 'home')
+			if not away_p: away_p = '?'
+			if not home_p: home_p = '?'
+			try:
+				print('[PITCH DBG pre-big]', 'away', away_p, 'home', home_p)
+			except Exception:
+				pass
 			# Font metrics: tiny font char width 4 -> center under each logo width
-			if l_med and away_p:
+			if l_med and away_p and away_p != '?':
 				w_logo = l_med.size[0]
 				px = max(0, (w_logo - len(away_p)*4)//2)
 				graphics.DrawText(canvas, font, px, MED + 1, white, away_p)
-			if r_med and home_p:
+			if r_med and home_p and home_p != '?':
 				w_logo = r_med.size[0]
 				start_x = width - w_logo + max(0, (w_logo - len(home_p)*4)//2)
 				graphics.DrawText(canvas, font, start_x, MED + 1, white, home_p)

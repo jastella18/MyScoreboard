@@ -45,13 +45,34 @@ class mlb_api:
         if not logo_url:
             # Some endpoints may have a single 'logo' field.
             logo_url = team_info.get("logo")
-        return {
+        out = {
             "id": team_info.get("id"),
             "abbreviation": team_info.get("abbreviation"),
             "score": team_block.get("score", "0"),
             "record": record_summary,
             "logo": logo_url,
         }
+        # Probable starting pitcher extraction.
+        # Newer ESPN MLB scoreboard adds a 'probables' list under competitor with objects containing 'athlete'.
+        prob_list = team_block.get("probables")
+        if isinstance(prob_list, list) and prob_list:
+            out["probables"] = prob_list
+            # Take first athlete full/display name as probable_pitcher convenience field
+            first = prob_list[0]
+            if isinstance(first, dict):
+                ath = first.get("athlete") or {}
+                if isinstance(ath, dict):
+                    out["probable_pitcher"] = ath.get("fullName") or ath.get("displayName") or ath.get("shortName")
+                else:
+                    # fallback direct
+                    out["probable_pitcher"] = first.get("displayName") or first.get("fullName")
+        # Some variants have a single 'probableStartingPitcher' object (as per user sample 'probableStartingPitcher')
+        psp = team_block.get("probableStartingPitcher") or team_block.get("probableStartingPitcherId")
+        if isinstance(psp, dict):
+            ath_name = psp.get("fullName") or psp.get("displayName") or psp.get("shortName")
+            if ath_name and not out.get("probable_pitcher"):
+                out["probable_pitcher"] = ath_name
+        return out
 
     @staticmethod
     def _extract_linescore(comp: Dict[str, Any]) -> Dict[str, List[int]]:
