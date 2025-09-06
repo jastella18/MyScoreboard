@@ -265,45 +265,56 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 				name_txt = _fit_name(home_p, w_logo)
 				start_x = width - w_logo + max(0, (w_logo - len(name_txt)*4)//2)
 				graphics.DrawText(canvas, font, start_x, name_y, white, name_txt)
-			# Venue centered between pitcher names and time (raised)
-			venue = getattr(game, 'venue', '')
-			if venue:
-				v_clean = venue.replace('  ', ' ').strip()
-				parts = v_clean.split()
-				line1 = v_clean[:12]
-				line2 = ''
-				# heuristic: try to balance words across two lines if long
-				if len(v_clean) > 12 and len(parts) > 1:
-					# Greedy: grow first line until adding next word would exceed 12 chars
-					cur = []
-					for w in parts:
-						if (len(' '.join(cur+[w])) <= 12):
-							cur.append(w)
-						else:
-							break
-					line1 = ' '.join(cur) if cur else parts[0]
-					line2 = ' '.join(parts[len(cur):])[:12]
-				# Compute vertical placement: center block (1 or 2 lines) between name_y+1 and time_y-2
-				lines_count = 2 if line2 else 1
-				block_height = 6 * lines_count
-				upper_bound = name_y + 1
-				lower_bound = (height - 1) - 2  # a couple pixels above time baseline
-				# target center
-				target_mid = (upper_bound + lower_bound) // 2
-				v_line1_y = max(upper_bound, min(lower_bound - block_height, target_mid - (block_height // 2)))
-				v_line2_y = v_line1_y + 6 if line2 else v_line1_y
-				for txt,ypos in ((line1,v_line1_y),(line2,v_line2_y) if line2 else (None,None)):
-					if not txt: continue
-					mxv = (width - len(txt)*4)//2
-					graphics.DrawText(canvas, font, mxv, ypos, white, txt.upper())
+			# New layout: time at top center, venue scrolls across bottom.
 			bold_font = FontManager.get_font(bold=True)
 			start_iso = getattr(game, 'start_time', None) or game.start_time
-			show_time = _format_local_start_time(start_iso)
-			if not show_time: show_time = 'TBD'
-			mx_time = center_x_width(show_time, 6)
-			time_y = min(height - 1, 31)  # move time as low as possible (was 30)
-			graphics.DrawText(canvas, bold_font, mx_time, time_y, white, show_time)
-			canvas = matrix.SwapOnVSync(canvas); time.sleep(hold); return
+			show_time = _format_local_start_time(start_iso) or 'TBD'
+			# Draw static elements each frame; animate venue scroll.
+			venue = (getattr(game, 'venue', '') or '').strip()
+			if not venue:
+				venue = f"{game.away.abbr} @ {game.home.abbr}"  # fallback
+			scroll_text = f"  {venue.upper()}  "
+			# Estimate total scroll width in pixels (4px per char)
+			char_w = 4
+			text_px = len(scroll_text) * char_w
+			loop_px = text_px + width
+			# Frame timing
+			step_delay = 0.08
+			max_frames = max(1, int(hold / step_delay))
+			frames_needed = loop_px  # shift one pixel per frame
+			frames = min(max_frames, frames_needed)
+			for frame in range(frames):
+				canvas.Clear()
+				# Redraw logos
+				if l_med: blit_med(l_med, 0, 0)
+				if r_med: blit_med(r_med, width - r_med.size[0], 0)
+				# Pitcher names (static)
+				if l_med and away_p and away_p != '?':
+					w_logo = l_med.size[0]
+					name_txt = _fit_name(away_p, w_logo)
+					px = max(0, (w_logo - len(name_txt)*char_w)//2)
+					graphics.DrawText(canvas, font, px, name_y, white, name_txt)
+				if r_med and home_p and home_p != '?':
+					w_logo = r_med.size[0]
+					name_txt = _fit_name(home_p, w_logo)
+					start_x = width - w_logo + max(0, (w_logo - len(name_txt)*char_w)//2)
+					graphics.DrawText(canvas, font, start_x, name_y, white, name_txt)
+				# Time at top center (baseline y=6)
+				mx_time = center_x_width(show_time, 6)
+				time_y = 6
+				graphics.DrawText(canvas, bold_font, mx_time, time_y, white, show_time)
+				# Scroll venue along bottom (baseline y=31) using small font
+				offset = frame % loop_px
+				# Starting draw x = width - offset
+				start_x_px = width - offset
+				# Render each character
+				for idx, ch in enumerate(scroll_text):
+					cx = start_x_px + idx*char_w
+					if cx < -char_w or cx >= width: continue
+					graphics.DrawText(canvas, font, cx, height - 1, white, ch)
+				canvas = matrix.SwapOnVSync(canvas)
+				time.sleep(step_delay)
+			return
 
 		# Big side logo layout (non pre-game states)
 		BIG = 26  # nominal target height
@@ -485,42 +496,49 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 				name_txt = _fit_name(home_p, w_logo)
 				start_x = width - w_logo + max(0, (w_logo - len(name_txt)*4)//2)
 				graphics.DrawText(canvas, font, start_x, name_y, white, name_txt)
-			# Venue centered between pitcher names and time (raised)
-			venue = getattr(game, 'venue', '')
-			if venue:
-				v_clean = venue.replace('  ', ' ').strip()
-				parts = v_clean.split()
-				line1 = v_clean[:12]
-				line2 = ''
-				if len(v_clean) > 12 and len(parts) > 1:
-					cur = []
-					for w in parts:
-						if (len(' '.join(cur+[w])) <= 12):
-							cur.append(w)
-						else:
-							break
-					line1 = ' '.join(cur) if cur else parts[0]
-					line2 = ' '.join(parts[len(cur):])[:12]
-				lines_count = 2 if line2 else 1
-				block_height = 6 * lines_count
-				upper_bound = name_y + 1
-				lower_bound = (height - 1) - 2
-				target_mid = (upper_bound + lower_bound) // 2
-				v_line1_y = max(upper_bound, min(lower_bound - block_height, target_mid - (block_height // 2)))
-				v_line2_y = v_line1_y + 6 if line2 else v_line1_y
-				for txt,ypos in ((line1,v_line1_y),(line2,v_line2_y) if line2 else (None,None)):
-					if not txt: continue
-					mxv = (width - len(txt)*4)//2
-					graphics.DrawText(canvas, font, mxv, ypos, white, txt.upper())
-			# Time bottom center
+			# New big pre-game layout: scrolling venue bottom, time top center
 			bold_font = FontManager.get_font(bold=True)
 			start_iso = getattr(game, 'start_time', None) or game.start_time
 			show_time = _format_local_start_time(start_iso) or 'TBD'
-			mx_time = center_x_width(show_time, 6)
-			time_y = min(height - 1, 31)
-			graphics.DrawText(canvas, bold_font, mx_time, time_y, white, show_time)
-			canvas = matrix.SwapOnVSync(canvas)
-			time.sleep(hold)
+			venue = (getattr(game, 'venue', '') or '').strip()
+			if not venue:
+				venue = f"{game.away.abbr} @ {game.home.abbr}"
+			scroll_text = f"  {venue.upper()}  "
+			char_w = 4
+			text_px = len(scroll_text) * char_w
+			loop_px = text_px + width
+			step_delay = 0.08
+			max_frames = max(1, int(hold / step_delay))
+			frames_needed = loop_px
+			frames = min(max_frames, frames_needed)
+			for frame in range(frames):
+				canvas.Clear()
+				# Re-draw logos
+				if l_med: blit_med(l_med, 0, 0)
+				if r_med: blit_med(r_med, width - r_med.size[0], 0)
+				# Pitcher names
+				if l_med and away_p and away_p != '?':
+					w_logo = l_med.size[0]
+					name_txt = _fit_name(away_p, w_logo)
+					px = max(0, (w_logo - len(name_txt)*char_w)//2)
+					graphics.DrawText(canvas, font, px, name_y, white, name_txt)
+				if r_med and home_p and home_p != '?':
+					w_logo = r_med.size[0]
+					name_txt = _fit_name(home_p, w_logo)
+					start_x = width - w_logo + max(0, (w_logo - len(name_txt)*char_w)//2)
+					graphics.DrawText(canvas, font, start_x, name_y, white, name_txt)
+				# Time top center
+				mx_time = center_x_width(show_time, 6)
+				graphics.DrawText(canvas, bold_font, mx_time, 6, white, show_time)
+				# Scroll venue bottom
+				offset = frame % loop_px
+				start_x_px = width - offset
+				for idx, ch in enumerate(scroll_text):
+					cx = start_x_px + idx*char_w
+					if cx < -char_w or cx >= width: continue
+					graphics.DrawText(canvas, font, cx, height - 1, white, ch)
+				canvas = matrix.SwapOnVSync(canvas)
+				time.sleep(step_delay)
 			return
 		# Final: logos + score + FINAL
 		if state == 'post':
@@ -628,7 +646,7 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 	time.sleep(hold)
 
 
-def cycle_games(matrix, games: Iterable[MLBGame], *, show_leaders: bool = True, per_game_seconds: float = 3.0, pre_game_seconds: float = 1.0, show_logos: bool = True, gamma_correct: bool = False):
+def cycle_games(matrix, games: Iterable[MLBGame], *, show_leaders: bool = True, per_game_seconds: float = 3.0, pre_game_seconds: float = 3.0, show_logos: bool = True, gamma_correct: bool = False):
 	"""Cycle through MLB games.
 
 	per_game_seconds: default hold time for in-progress / post games.
