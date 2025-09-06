@@ -186,11 +186,11 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 		setp(base_center_x, base_center_y+2, (180,180,180))           # Home
 		for (dx,dy) in [(-1,-1),(0,-2),(1,-1),(2,0),(1,1),(0,2),(-1,1),(-2,0)]:
 			setp(base_center_x+dx, base_center_y+dy, (40,40,40))
-		# Score line at row 28 (was 26), use bold font
+		# Score line at row 31 (was 28), shifted left by 2 pixels
 		score_combo = f"{game.away.score}-{game.home.score}"[:9]
-		bold_font = FontManager.get_font(bold=True)  # Assuming FontManager supports bold
-		mxs = center_x(score_combo)
-		graphics.DrawText(canvas, bold_font, mxs, 28, white, score_combo)
+		bold_font = FontManager.get_font(bold=True)
+		mxs = center_x(score_combo) - 2  # shift left by 2 pixels
+		graphics.DrawText(canvas, bold_font, mxs, 31, white, score_combo)  # drop 3 pixels (was 28)
 		# Batter/Pitcher not shown now (removed abbreviations per request)
 	else:
 		# Fallback to original compact layout
