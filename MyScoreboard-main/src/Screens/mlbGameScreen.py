@@ -66,6 +66,36 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 		from ..Screens.common import graphics  # local import to avoid circular top-level
 		return graphics.Color(_gc(r), _gc(g), _gc(b))
 
+	# Helper to dynamically fit pitcher name inside available pixel width using 4px tiny font glyphs.
+	def _fit_name(name: str, max_px: int) -> str:
+		if not name or max_px <= 0:
+			return ''
+		name = name.upper()
+		char_w = 4
+		if len(name) * char_w <= max_px:
+			return name
+		# Try last segment (after space or hyphen)
+		import re
+		segments = re.split(r"[\s-]+", name)
+		if segments:
+			last_seg = segments[-1]
+			if len(last_seg) * char_w <= max_px:
+				return last_seg
+		# Remove vowels from end (except first letter)
+		core = list(last_seg)
+		vowels = set("AEIOU")
+		# Keep first letter always
+		for i in range(len(core)-1, 0, -1):
+			if len(core) * char_w <= max_px:
+				break
+			if core[i] in vowels:
+				core.pop(i)
+		if len(core) * char_w <= max_px:
+			return ''.join(core)
+		# Final truncate to fit
+		max_chars = max(1, max_px // char_w)
+		return ''.join(core)[:max_chars]
+
 	# Ultra-small display handling (e.g., ~12x6). Provide compressed single-line output.
 	if width <= 20 or height <= 8:
 		from ..Screens.common import graphics, FontManager
@@ -223,18 +253,25 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 				print('[PITCH DBG pre-medium]', 'away', away_p, 'home', home_p)
 			except Exception:
 				pass
+			# Adjusted vertical positioning: pitcher names moved down 3px, time down 1-2px (clamped to panel)
+			name_y = min(height - 3, MED + 4)  # MED base + 4 (was +1)
 			if l_med and away_p and away_p != '?':
-				w_logo = l_med.size[0]; px = max(0, (w_logo - len(away_p)*4)//2)
-				graphics.DrawText(canvas, font, px, MED + 1, white, away_p)
+				w_logo = l_med.size[0]
+				name_txt = _fit_name(away_p, w_logo)
+				px = max(0, (w_logo - len(name_txt)*4)//2)
+				graphics.DrawText(canvas, font, px, name_y, white, name_txt)
 			if r_med and home_p and home_p != '?':
-				w_logo = r_med.size[0]; start_x = width - w_logo + max(0, (w_logo - len(home_p)*4)//2)
-				graphics.DrawText(canvas, font, start_x, MED + 1, white, home_p)
+				w_logo = r_med.size[0]
+				name_txt = _fit_name(home_p, w_logo)
+				start_x = width - w_logo + max(0, (w_logo - len(name_txt)*4)//2)
+				graphics.DrawText(canvas, font, start_x, name_y, white, name_txt)
 			bold_font = FontManager.get_font(bold=True)
 			start_iso = getattr(game, 'start_time', None) or game.start_time
 			show_time = _format_local_start_time(start_iso)
 			if not show_time: show_time = 'TBD'
 			mx_time = center_x_width(show_time, 6)
-			graphics.DrawText(canvas, bold_font, mx_time, 30, white, show_time)
+			time_y = min(height - 1, 31)  # move time as low as possible (was 30)
+			graphics.DrawText(canvas, bold_font, mx_time, time_y, white, show_time)
 			canvas = matrix.SwapOnVSync(canvas); time.sleep(hold); return
 
 		# Big side logo layout (non pre-game states)
@@ -405,21 +442,25 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 			except Exception:
 				pass
 			# Font metrics: tiny font char width 4 -> center under each logo width
+			# Adjusted vertical positioning consistent with medium pre layout
+			name_y = min(height - 3, MED + 4)
 			if l_med and away_p and away_p != '?':
 				w_logo = l_med.size[0]
-				px = max(0, (w_logo - len(away_p)*4)//2)
-				graphics.DrawText(canvas, font, px, MED + 1, white, away_p)
+				name_txt = _fit_name(away_p, w_logo)
+				px = max(0, (w_logo - len(name_txt)*4)//2)
+				graphics.DrawText(canvas, font, px, name_y, white, name_txt)
 			if r_med and home_p and home_p != '?':
 				w_logo = r_med.size[0]
-				start_x = width - w_logo + max(0, (w_logo - len(home_p)*4)//2)
-				graphics.DrawText(canvas, font, start_x, MED + 1, white, home_p)
-			# Time bottom center (bold) baseline y=30 (keeps a 1px margin at bottom for readability)
+				name_txt = _fit_name(home_p, w_logo)
+				start_x = width - w_logo + max(0, (w_logo - len(name_txt)*4)//2)
+				graphics.DrawText(canvas, font, start_x, name_y, white, name_txt)
+			# Time bottom center (bold) baseline moved down (clamped)
 			bold_font = FontManager.get_font(bold=True)
 			start_iso = getattr(game, 'start_time', None) or game.start_time
 			show_time = _format_local_start_time(start_iso) or 'TBD'
-			# Center bold time using 6px width assumption
 			mx_time = center_x_width(show_time, 6)
-			graphics.DrawText(canvas, bold_font, mx_time, 30, white, show_time)
+			time_y = min(height - 1, 31)
+			graphics.DrawText(canvas, bold_font, mx_time, time_y, white, show_time)
 			canvas = matrix.SwapOnVSync(canvas)
 			time.sleep(hold)
 			return
