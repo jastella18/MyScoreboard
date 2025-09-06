@@ -25,11 +25,25 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 	width = getattr(canvas, 'width', getattr(canvas, 'GetWidth', lambda: 64)()) if hasattr(canvas, 'width') else 64
 	height = getattr(canvas, 'height', getattr(canvas, 'GetHeight', lambda: 32)()) if hasattr(canvas, 'height') else 32
 
+	# Shared gamma correction helper (used for logos AND text)
+	if gamma_correct:
+		if not hasattr(render_game, "_gamma_lut"):
+			g = 2.2
+			render_game._gamma_lut = [int(((i / 255.0) ** g) * 255 + 0.5) for i in range(256)]
+		LUT = render_game._gamma_lut  # type: ignore[attr-defined]
+		def _gc(v: int) -> int: return LUT[v]
+	else:
+		def _gc(v: int) -> int: return v
+
+	def gcolor(r: int, g: int, b: int):
+		from ..Screens.common import graphics  # local import to avoid circular top-level
+		return graphics.Color(_gc(r), _gc(g), _gc(b))
+
 	# Ultra-small display handling (e.g., ~12x6). Provide compressed single-line output.
 	if width <= 20 or height <= 8:
 		from ..Screens.common import graphics, FontManager
 		font = FontManager.get_font()
-		white = graphics.Color(255,255,255)
+		white = gcolor(255,255,255)
 		# Build compact token: A1-H2 (first letters) plus maybe inning if room
 		a_chr = game.away.abbr[:1]
 		h_chr = game.home.abbr[:1]
@@ -52,15 +66,6 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 		# Fetch processed logos (background removed)
 		left_img = get_processed_logo('mlb', game.away.abbr, url=game.away.logo, size=BIG, remove_bg=True)
 		right_img = get_processed_logo('mlb', game.home.abbr, url=game.home.logo, size=BIG, remove_bg=True)
-		# Optional gamma correction (apply to logo pixels only). Typical LED panels benefit from ~2.2.
-		if gamma_correct:
-			if not hasattr(render_game, "_gamma_lut"):
-				g = 2.2
-				render_game._gamma_lut = [int(((i / 255.0) ** g) * 255 + 0.5) for i in range(256)]
-			LUT = render_game._gamma_lut  # type: ignore[attr-defined]
-			def _gc(v: int) -> int: return LUT[v]
-		else:
-			def _gc(v: int) -> int: return v
 		# Draw with partial off-screen effect via per-pixel plot
 		def blit(img, ox):
 			if img is None:
@@ -96,7 +101,7 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 			blit(right_img, 64 - (BIG - 6))
 		from ..Screens.common import graphics, FontManager, center_x
 		font = FontManager.get_font()
-		white = graphics.Color(255,255,255)
+		white = gcolor(255,255,255)
 		state = game.state or ""
 		# Pre-game: show only logos + @time
 		if state == 'pre':
@@ -202,10 +207,19 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 		graphics.DrawText(canvas, bold_font, mxs, 31, white, score_combo)  # drop 3 pixels (was 28)
 		# Batter/Pitcher not shown now (removed abbreviations per request)
 	else:
-		# Fallback to original compact layout
+		# Fallback layout (manually draw with gamma-corrected text if requested)
 		lines_raw = game_leaders_lines(game) if leaders else game_primary_lines(game)
 		lines = prepare_lines(lines_raw, max_lines=4, max_chars=15)
-		draw_frame(canvas, lines)
+		from ..Screens.common import graphics, FontManager, center_x
+		font = FontManager.get_font()
+		white = gcolor(255,255,255)
+		start_y = 6
+		line_height = 8
+		y = start_y
+		for line in lines:
+			mx = center_x(line)
+			graphics.DrawText(canvas, font, mx, y, white, line)
+			y += line_height
 	canvas = matrix.SwapOnVSync(canvas)
 	time.sleep(hold)
 
