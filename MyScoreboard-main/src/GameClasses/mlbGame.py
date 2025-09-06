@@ -39,6 +39,10 @@ class MLBGame(BaseGame):
 		return ""
 
 	@property
+	def venue(self) -> str:
+		return (self.raw.get("venue") or "").strip()
+
+	@property
 	def outs_text(self) -> str:
 		return self.raw.get("outs_text") or ""
 

@@ -131,6 +131,11 @@ class mlb_api:
         home_block = next((c for c in competitors if c.get("homeAway") == "home"), competitors[0] if competitors else {})
         away_block = next((c for c in competitors if c.get("homeAway") == "away"), competitors[1] if len(competitors) > 1 else {})
         situation = comp.get("situation", {})
+        # Venue name (stadium) for pre-game display
+        venue_block = comp.get("venue", {}) or {}
+        venue_name = None
+        if isinstance(venue_block, dict):
+            venue_name = venue_block.get("fullName") or venue_block.get("name")
         # Extract richer situation data (inning half, outs, batter, pitcher)
         half = (situation.get("halfInning") or situation.get("inningHalf") or "").lower()
         if not half:
@@ -189,6 +194,7 @@ class mlb_api:
             "on_third": on_third,
             # Include raw sub-dict for richer debugging / future use (arrow logic previously queried this)
             "situation_raw": situation,
+            "venue": venue_name,
         }
 
     @staticmethod

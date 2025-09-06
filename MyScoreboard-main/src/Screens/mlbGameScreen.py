@@ -265,6 +265,33 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 				name_txt = _fit_name(home_p, w_logo)
 				start_x = width - w_logo + max(0, (w_logo - len(name_txt)*4)//2)
 				graphics.DrawText(canvas, font, start_x, name_y, white, name_txt)
+			# Venue in middle: split into up to two lines (smart break) and center
+			venue = getattr(game, 'venue', '')
+			if venue:
+				v_clean = venue.replace('  ', ' ').strip()
+				parts = v_clean.split()
+				line1 = v_clean[:12]
+				line2 = ''
+				# heuristic: try to balance words across two lines if long
+				if len(v_clean) > 12 and len(parts) > 1:
+					# Greedy: grow first line until adding next word would exceed 12 chars
+					cur = []
+					for w in parts:
+						if (len(' '.join(cur+[w])) <= 12):
+							cur.append(w)
+						else:
+							break
+						rem_start = len(cur)
+					line1 = ' '.join(cur) if cur else parts[0]
+					line2 = ' '.join(parts[len(cur):])[:12]
+				# Center lines vertically between names and time (names at name_y, time near bottom)
+				mid_top = name_y + 2
+				v_line1_y = min(height - 6, mid_top)
+				v_line2_y = v_line1_y + 6 if line2 else v_line1_y
+				for txt,ypos in ((line1,v_line1_y),(line2,v_line2_y) if line2 else (None,None)):
+					if not txt: continue
+					mxv = (width - len(txt)*4)//2
+					graphics.DrawText(canvas, font, mxv, ypos, white, txt.upper())
 			bold_font = FontManager.get_font(bold=True)
 			start_iso = getattr(game, 'start_time', None) or game.start_time
 			show_time = _format_local_start_time(start_iso)
@@ -454,7 +481,30 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 				name_txt = _fit_name(home_p, w_logo)
 				start_x = width - w_logo + max(0, (w_logo - len(name_txt)*4)//2)
 				graphics.DrawText(canvas, font, start_x, name_y, white, name_txt)
-			# Time bottom center (bold) baseline moved down (clamped)
+			# Venue (two-line center) same logic as medium layout
+			venue = getattr(game, 'venue', '')
+			if venue:
+				v_clean = venue.replace('  ', ' ').strip()
+				parts = v_clean.split()
+				line1 = v_clean[:12]
+				line2 = ''
+				if len(v_clean) > 12 and len(parts) > 1:
+					cur = []
+					for w in parts:
+						if (len(' '.join(cur+[w])) <= 12):
+							cur.append(w)
+						else:
+							break
+					line1 = ' '.join(cur) if cur else parts[0]
+					line2 = ' '.join(parts[len(cur):])[:12]
+				mid_top = name_y + 2
+				v_line1_y = min(height - 6, mid_top)
+				v_line2_y = v_line1_y + 6 if line2 else v_line1_y
+				for txt,ypos in ((line1,v_line1_y),(line2,v_line2_y) if line2 else (None,None)):
+					if not txt: continue
+					mxv = (width - len(txt)*4)//2
+					graphics.DrawText(canvas, font, mxv, ypos, white, txt.upper())
+			# Time bottom center
 			bold_font = FontManager.get_font(bold=True)
 			start_iso = getattr(game, 'start_time', None) or game.start_time
 			show_time = _format_local_start_time(start_iso) or 'TBD'
