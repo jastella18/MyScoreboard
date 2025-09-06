@@ -162,9 +162,9 @@ def render_game(matrix, game: NFLGame, leaders: bool = False, hold: float = 2.5,
 				w_logo = r_med.size[0]; txt = fit(game.home.record, w_logo); start_x = width - w_logo + max(0, (w_logo - len(txt)*4)//2)
 				graphics.DrawText(canvas, font, start_x, name_y, white, txt)
 			# Time & DOW (time y=13, DOW y=16)
-			graphics.DrawText(canvas, bold_font, mx_time, 11, white, show_time)
+			graphics.DrawText(canvas, bold_font, mx_time, 9, white, show_time)
 			if dow:
-				graphics.DrawText(canvas, font, mx_dow, 16, white, dow)
+				graphics.DrawText(canvas, font, mx_dow, 15, white, dow)
 			if odds_line:
 				graphics.DrawText(canvas, font, mx_odds, 24, white, odds_line)
 			offset = frame % loop_px
