@@ -32,27 +32,51 @@ _CANDIDATE_FONT_PATHS = [
     os.path.join('/usr', 'local', 'share', 'fonts', 'misc', '4x6.bdf'),
     os.path.join('/usr', 'share', 'fonts', 'misc', '4x6.bdf'),
 ]
+_BOLD_FONT_PATHS = [
+    os.path.join(PROJECT_ROOT, 'rpi-rgb-led-matrix', 'fonts', '6x13B.bdf'),
+    os.path.join('/usr', 'local', 'share', 'fonts', 'misc', '6x13B.bdf'),
+    os.path.join('/usr', 'share', 'fonts', 'misc', '6x13B.bdf'),
+]
 DEFAULT_FONT_PATH = next((p for p in _CANDIDATE_FONT_PATHS if os.path.isfile(p)), _CANDIDATE_FONT_PATHS[0])
 
 class FontManager:
     _font = None
+    _bold_font = None
+
     @classmethod
-    def get_font(cls):
-        if cls._font is None:
-            f = graphics.Font()
-            loaded = False
-            for p in _CANDIDATE_FONT_PATHS:
-                try:
-                    f.LoadFont(p)
-                    loaded = True
-                    break
-                except Exception:
-                    continue
-            if not loaded:
-                # Font not critical; drawing still works in stub context.
-                pass
-            cls._font = f
-        return cls._font
+    def get_font(cls, bold=False):
+        if bold:
+            if cls._bold_font is None:
+                f = graphics.Font()
+                loaded = False
+                for p in _BOLD_FONT_PATHS:
+                    try:
+                        f.LoadFont(p)
+                        loaded = True
+                        break
+                    except Exception:
+                        continue
+                if not loaded:
+                    # Fallback to regular font if bold not found
+                    return cls.get_font(bold=False)
+                cls._bold_font = f
+            return cls._bold_font
+        else:
+            if cls._font is None:
+                f = graphics.Font()
+                loaded = False
+                for p in _CANDIDATE_FONT_PATHS:
+                    try:
+                        f.LoadFont(p)
+                        loaded = True
+                        break
+                    except Exception:
+                        continue
+                if not loaded:
+                    # Font not critical; drawing still works in stub context.
+                    pass
+                cls._font = f
+            return cls._font
 
 def wrap_text(text: str, max_chars: int) -> List[str]:
     words = text.split()
