@@ -128,7 +128,7 @@ def _remove_bg(img, tolerance: int = 38):
                 if similar(src[nx,ny]):
                     visited[ny][nx] = True
                     q.append((nx,ny))
-    # Build RGBA output, only removing flood area
+    # Initial RGBA output
     out = Image.new('RGBA', (w,h))
     dst = out.load()
     for y in range(h):
@@ -138,10 +138,32 @@ def _remove_bg(img, tolerance: int = 38):
                 dst[x,y] = (0,0,0,0)
             else:
                 dst[x,y] = (r,g,b,255)
+
+    # Fringe cleanup: remove 1px ring of nearly-background pixels adjacent to transparency
+    edge_tol = int(tolerance * 1.6)
+    def similar_edge(c):
+        r,g,b = c
+        return abs(r-avg[0]) + abs(g-avg[1]) + abs(b-avg[2]) <= edge_tol
+    to_clear = []
+    for y in range(h):
+        for x in range(w):
+            pr,pg,pb,pa = dst[x,y]
+            if pa == 0:
+                continue
+            if not similar_edge((pr,pg,pb)):
+                continue
+            # If any neighbor transparent mark for removal
+            for nx,ny in ((x+1,y),(x-1,y),(x,y+1),(x,y-1)):
+                if 0 <= nx < w and 0 <= ny < h:
+                    if dst[nx,ny][3] == 0:
+                        to_clear.append((x,y))
+                        break
+    for x,y in to_clear:
+        dst[x,y] = (0,0,0,0)
     return out
 
 _PROC_CACHE: Dict[Tuple[str, int, str, int], object] = {}
-_BG_ALGO_VERSION = 3  # bump to invalidate previous RGB-only cached logos
+_BG_ALGO_VERSION = 4  # bump to invalidate previous cached versions after fringe fix
 
 def get_processed_logo(sport: str, team_abbr: str, *, url: Optional[str], size: int, remove_bg: bool) -> Optional[object]:
     """High-level accessor returning possibly background-removed, resized logo.
