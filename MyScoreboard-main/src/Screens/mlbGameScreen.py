@@ -100,7 +100,8 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 		if right_img:
 			blit(right_img, 64 - (BIG - 6))
 		from ..Screens.common import graphics, FontManager, center_x, draw_text_small_bold
-		font = FontManager.get_font()
+		font = FontManager.get_font()  # base tiny font
+		bold_font = FontManager.get_font(bold=True)  # taller real bold for score
 		white = gcolor(255,255,255)
 		state = game.state or ""
 		# Pre-game: show only logos + @time
@@ -117,7 +118,8 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 					show_time = ''
 			line = f"@ {show_time}" if show_time else "@ TBD"
 			mx = center_x(line[:8])
-			graphics.DrawText(canvas, font, mx, 8, white, line[:8])
+			# Pre-game line small bold
+			draw_text_small_bold(canvas, font, mx, 8, white, line[:8])
 			canvas = matrix.SwapOnVSync(canvas)
 			time.sleep(hold)
 			return
@@ -125,10 +127,12 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 		if state == 'post':
 			score_combo = f"{game.away.score}-{game.home.score}"[:9]
 			mxs = center_x(score_combo)
-			graphics.DrawText(canvas, font, mxs, 8, white, score_combo)
+			# Bold score near upper third to leave bottom for FINAL
+			graphics.DrawText(canvas, bold_font, mxs, 10, white, score_combo)
 			final_txt = "FINAL"
 			mxf = center_x(final_txt)
-			graphics.DrawText(canvas, font, mxf, 16, white, final_txt)
+			# Place FINAL at very bottom baseline
+			graphics.DrawText(canvas, bold_font, mxf, height - 1, white, final_txt)
 			canvas = matrix.SwapOnVSync(canvas)
 			time.sleep(hold)
 			return
@@ -161,7 +165,8 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 		state_line = f"{half_label} {inning_num}".strip()
 		if state_line:
 			mx = center_x(state_line[:10])
-			graphics.DrawText(canvas, font, mx, 5, white, state_line[:10])
+			# Use simulated small bold for inning/half line
+			draw_text_small_bold(canvas, font, mx, 5, white, state_line[:10])
 		# 3. Arrow: place next to batting team's logo (away: left side, home: right side)
 		#    Direction: point inward toward the field/text.
 		if half_side:
@@ -176,7 +181,8 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 			# 	canvas.SetPixel(arrow_x, arrow_y, 255,255,255)  # anchor pixel to ensure visibility on some fonts
 			# except Exception:
 			# 	pass
-			graphics.DrawText(canvas, font, arrow_x, arrow_y, white, arrow_char)
+			# Arrow small bold (horizontal embolden)
+			draw_text_small_bold(canvas, font, arrow_x, arrow_y, white, arrow_char)
 		# (Old centered arrow removed)
 		# Bases diamond centered around (31,18) (shifted left 1) + outs dots above
 		b1,b2,b3 = game.bases
@@ -200,17 +206,16 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 		setp(base_center_x, base_center_y+2, (180,180,180))           # Home
 		for (dx,dy) in [(-1,-1),(0,-2),(1,-1),(2,0),(1,1),(0,2),(-1,1),(-2,0)]:
 			setp(base_center_x+dx, base_center_y+dy, (40,40,40))
-		# Score line at row 31 (was 28), shifted left by 2 pixels
+		# Score line (use real bold font again) at row 31, shifted left by 2 pixels
 		score_combo = f"{game.away.score}-{game.home.score}"[:9]
-		# Simulated small bold (4x6) instead of large bold font for better fit
-		mxs = center_x(score_combo) - 2  # shift left by 2 pixels
-		draw_text_small_bold(canvas, font, mxs, 31, white, score_combo, style="h1")  # drop 3 pixels (was 28)
+		mxs = center_x(score_combo) - 2
+		graphics.DrawText(canvas, bold_font, mxs, 31, white, score_combo)
 		# Batter/Pitcher not shown now (removed abbreviations per request)
 	else:
 		# Fallback layout (manually draw with gamma-corrected text if requested)
 		lines_raw = game_leaders_lines(game) if leaders else game_primary_lines(game)
 		lines = prepare_lines(lines_raw, max_lines=4, max_chars=15)
-		from ..Screens.common import graphics, FontManager, center_x
+		from ..Screens.common import graphics, FontManager, center_x, draw_text_small_bold
 		font = FontManager.get_font()
 		white = gcolor(255,255,255)
 		start_y = 6
@@ -218,7 +223,7 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 		y = start_y
 		for line in lines:
 			mx = center_x(line)
-			graphics.DrawText(canvas, font, mx, y, white, line)
+			draw_text_small_bold(canvas, font, mx, y, white, line)
 			y += line_height
 	canvas = matrix.SwapOnVSync(canvas)
 	time.sleep(hold)
