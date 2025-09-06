@@ -2,6 +2,11 @@
 from __future__ import annotations
 import time
 from typing import Iterable, List
+from datetime import datetime
+try:
+	from zoneinfo import ZoneInfo  # Python 3.9+
+except Exception:  # pragma: no cover
+	ZoneInfo = None  # type: ignore
 from ..GameClasses.mlbGame import MLBGame
 from ..logo_cache import get_logo, get_logo_from_url, get_processed_logo
 from .common import prepare_lines, draw_frame
@@ -18,6 +23,28 @@ def game_leaders_lines(game: MLBGame) -> List[str]:
 	return game.leaders_lines()
 
 
+
+def _format_local_start_time(start_iso: str | None, target_tz: str = 'America/New_York') -> str:
+	"""Convert an ISO 8601 UTC (or naive) time to HH:MM in target tz (default Eastern).
+	Assumes UTC when naive. Returns '' on failure."""
+	if not start_iso or 'T' not in start_iso:
+		return ''
+	iso = start_iso.strip()
+	if iso.endswith('Z'):
+		iso = iso[:-1] + '+00:00'
+	try:
+		dt = datetime.fromisoformat(iso)
+		if dt.tzinfo is None and ZoneInfo:
+			dt = dt.replace(tzinfo=ZoneInfo('UTC'))
+		if ZoneInfo:
+			local = dt.astimezone(ZoneInfo(target_tz))
+			return f"{local.hour:02d}:{local.minute:02d}"
+		return iso.split('T',1)[1][:5]
+	except Exception:
+		try:
+			return iso.split('T',1)[1][:5]
+		except Exception:
+			return ''
 
 def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5, show_logos: bool = True, big_layout: bool = True, gamma_correct: bool = False):
 	canvas = matrix.CreateFrameCanvas()
@@ -116,12 +143,7 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 				graphics.DrawText(canvas, font, start_x, MED + 1, white, home_p)
 			bold_font = FontManager.get_font(bold=True)
 			start_iso = getattr(game, 'start_time', None) or game.start_time
-			show_time = ''
-			if isinstance(start_iso, str) and 'T' in start_iso:
-				try:
-					clock_part = start_iso.split('T',1)[1]
-					show_time = clock_part[:5]
-				except Exception: show_time = ''
+			show_time = _format_local_start_time(start_iso)
 			if not show_time: show_time = 'TBD'
 			mx_time = center_x_width(show_time, 6)
 			graphics.DrawText(canvas, bold_font, mx_time, 30, white, show_time)
@@ -246,15 +268,7 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 			# Time bottom center (bold) baseline y=30 (keeps a 1px margin at bottom for readability)
 			bold_font = FontManager.get_font(bold=True)
 			start_iso = getattr(game, 'start_time', None) or game.start_time
-			show_time = ''
-			if isinstance(start_iso, str) and 'T' in start_iso:
-				try:
-					clock_part = start_iso.split('T',1)[1]
-					show_time = clock_part[:5]
-				except Exception:
-					show_time = ''
-			if not show_time:
-				show_time = 'TBD'
+			show_time = _format_local_start_time(start_iso) or 'TBD'
 			# Center bold time using 6px width assumption
 			mx_time = center_x_width(show_time, 6)
 			graphics.DrawText(canvas, bold_font, mx_time, 30, white, show_time)
