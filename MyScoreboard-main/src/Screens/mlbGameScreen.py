@@ -61,9 +61,74 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 		return
 
 	if show_logos and big_layout and width >= 48 and height >= 24:
-		# Big side logo layout
+		# Determine state early so we can choose layout without drawing large logos twice
+		state = game.state or ""
+		# Pre-game: dedicated medium-logo layout (skip big logos)
+		if state == 'pre':
+			from ..Screens.common import graphics, FontManager, center_x_width
+			font = FontManager.get_font()
+			white = gcolor(255,255,255)
+			MED = 18
+			l_med = get_processed_logo('mlb', game.away.abbr, url=game.away.logo, size=MED, remove_bg=True)
+			r_med = get_processed_logo('mlb', game.home.abbr, url=game.home.logo, size=MED, remove_bg=True)
+			def blit_med(img, ox, oy=0):
+				if img is None: return
+				try: has_alpha = img.mode == 'RGBA'
+				except Exception: has_alpha = False
+				w,h = img.size; pix = img.load()
+				for y2 in range(h):
+					py = oy + y2
+					if py >= height: break
+					for x2 in range(w):
+						px = ox + x2
+						if px < 0 or px >= width: continue
+						val = pix[x2,y2]
+						if has_alpha and len(val)==4:
+							r,g2,b2,a = val
+							if a < 90: continue
+						else:
+							r,g2,b2 = val[:3]
+						try: canvas.SetPixel(px, py, _gc(int(r)), _gc(int(g2)), _gc(int(b2)))
+						except Exception: pass
+			if l_med: blit_med(l_med, 0, 0)
+			if r_med: blit_med(r_med, width - r_med.size[0], 0)
+			def last_name(obj):
+				name = None
+				for attr in ("probable_pitcher", "starting_pitcher", "pitcher"):
+					val = getattr(obj, attr, None)
+					if val: name = val; break
+				if not name: return ""
+				if isinstance(name, dict):
+					for k in ("last_name","lname","name_last","last"):
+						if k in name and name[k]: return str(name[k])[:8].upper()
+					for k in ("display","full","name"):
+						if k in name and name[k]:
+							parts = str(name[k]).split(); return parts[-1][:8].upper()
+				if isinstance(name, str):
+					parts = name.strip().split(); return parts[-1][:8].upper() if parts else ""
+				return ""
+			away_p = last_name(game.away); home_p = last_name(game.home)
+			if l_med and away_p:
+				w_logo = l_med.size[0]; px = max(0, (w_logo - len(away_p)*4)//2)
+				graphics.DrawText(canvas, font, px, MED + 1, white, away_p)
+			if r_med and home_p:
+				w_logo = r_med.size[0]; start_x = width - w_logo + max(0, (w_logo - len(home_p)*4)//2)
+				graphics.DrawText(canvas, font, start_x, MED + 1, white, home_p)
+			bold_font = FontManager.get_font(bold=True)
+			start_iso = getattr(game, 'start_time', None) or game.start_time
+			show_time = ''
+			if isinstance(start_iso, str) and 'T' in start_iso:
+				try:
+					clock_part = start_iso.split('T',1)[1]
+					show_time = clock_part[:5]
+				except Exception: show_time = ''
+			if not show_time: show_time = 'TBD'
+			mx_time = center_x_width(show_time, 6)
+			graphics.DrawText(canvas, bold_font, mx_time, 30, white, show_time)
+			canvas = matrix.SwapOnVSync(canvas); time.sleep(hold); return
+
+		# Big side logo layout (non pre-game states)
 		BIG = 26  # nominal target height
-		# Fetch processed logos (background removed)
 		left_img = get_processed_logo('mlb', game.away.abbr, url=game.away.logo, size=BIG, remove_bg=True)
 		right_img = get_processed_logo('mlb', game.home.abbr, url=game.home.logo, size=BIG, remove_bg=True)
 		# Draw with partial off-screen effect via per-pixel plot
