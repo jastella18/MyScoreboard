@@ -158,10 +158,10 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 			else:  # bottom -> home batting
 				arrow_char = '<'
 				arrow_x = 33  # a few pixels left of right logo cluster
-			try:
-				canvas.SetPixel(arrow_x, arrow_y, 255,255,255)  # anchor pixel to ensure visibility on some fonts
-			except Exception:
-				pass
+			# try:
+			# 	canvas.SetPixel(arrow_x, arrow_y, 255,255,255)  # anchor pixel to ensure visibility on some fonts
+			# except Exception:
+			# 	pass
 			graphics.DrawText(canvas, font, arrow_x, arrow_y, white, arrow_char)
 		# (Old centered arrow removed)
 		# Bases diamond centered around (31,18) (shifted left 1) + outs dots above
