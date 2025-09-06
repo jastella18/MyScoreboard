@@ -177,7 +177,7 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 		outs_val = game.raw.get('outs') if isinstance(game.raw.get('outs'), int) else 0
 		for i in range(3):
 			dot_x = base_center_x - 2 + i*2
-			dot_y = base_center_y - 5
+			dot_y = base_center_y - 4
 			color = (255,0,0) if i < outs_val else (70,70,70)
 			setp(dot_x, dot_y, color)
 		setp(base_center_x, base_center_y-2, occ if b2 else emp)      # Second
