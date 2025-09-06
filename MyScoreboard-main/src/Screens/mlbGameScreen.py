@@ -19,7 +19,7 @@ def game_leaders_lines(game: MLBGame) -> List[str]:
 
 
 
-def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5, show_logos: bool = True, big_layout: bool = False):
+def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5, show_logos: bool = True, big_layout: bool = True):
 	canvas = matrix.CreateFrameCanvas()
 	# Detect actual canvas size (fallback to assumed 64x32)
 	width = getattr(canvas, 'width', getattr(canvas, 'GetWidth', lambda: 64)()) if hasattr(canvas, 'width') else 64
@@ -118,29 +118,58 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 			canvas = matrix.SwapOnVSync(canvas)
 			time.sleep(hold)
 			return
-		# In-progress layout
+		# In-progress layout (robust inning half extraction + reliable arrow)
 		inning_line = game._period_text()
-		half_char = 'T' if game.half.startswith('top') else ('B' if game.half.startswith('bot') else '')
-		# If display inning like T6 convert to Top 6
-		if inning_line and inning_line[0] in ('T','B') and inning_line[1:].isdigit():
-			full_half = 'Top' if inning_line[0]=='T' else 'BOT'
-			inning_num = inning_line[1:]
-			state_line = f"{full_half} {inning_num}"
-		else:
-			inning_num = ''.join(ch for ch in inning_line if ch.isdigit()) if inning_line else ''
-			full_half = 'Top' if half_char == 'T' else ('BOT' if half_char == 'B' else '')
-			state_line = f"{full_half} {inning_num}".strip()
+		inning_num = ''
+		# Primary source: raw situation fields if present
+		half_side = ''  # 'top' or 'bot'
+		if isinstance(getattr(game, 'raw', None), dict):
+			raw = game.raw
+			# ESPN MLB JSON often has situation:{"isTopInning": bool}
+			sit = raw.get('situation') if isinstance(raw.get('situation'), dict) else None
+			if sit and 'isTopInning' in sit:
+				half_side = 'top' if sit.get('isTopInning') else 'bot'
+			# Inning number
+			for key in ('currentInning','inning'):
+				ci = raw.get(key)
+				if ci:
+					inning_num = str(ci)
+					break
+		# Secondary: model attributes
+		if not half_side:
+			model_half = str(getattr(game, 'half', '')).lower()
+			if model_half.startswith('top'):
+				half_side = 'top'
+			elif model_half.startswith('bot') or model_half.startswith('bottom'):
+				half_side = 'bot'
+		# Fallback from encoded inning_line like 'T6'/'B6'
+		if not half_side and inning_line:
+			c0 = inning_line[0]
+			if c0 == 'T': half_side = 'top'
+			elif c0 == 'B': half_side = 'bot'
+		# Inning number fallback parsing
+		if not inning_num and game.period:
+			inning_num = str(game.period)
+		if not inning_num and inning_line:
+			digits = ''.join(ch for ch in inning_line if ch.isdigit())
+			if digits:
+				inning_num = digits
+		# Compose display
+		half_disp = 'Top' if half_side=='top' else ('BOT' if half_side=='bot' else '')
+		state_line = f"{half_disp} {inning_num}".strip()
 		if state_line:
 			mx = center_x(state_line[:10])
-			graphics.DrawText(canvas, font, mx, 6, white, state_line[:10])
-		# Centered arrow pointing toward batting team's logo (row 12)
+			graphics.DrawText(canvas, font, mx, 5, white, state_line[:10])
+		# Arrow selection from half_side
+		half_char = 'T' if half_side=='top' else ('B' if half_side=='bot' else '')
 		arrow_y = 12
 		arrow_line = '<' if half_char == 'T' else '>'  # Top inning: away batting -> left logo; Bottom: home -> right logo
 		mx_arrow = center_x(arrow_line)
 		graphics.DrawText(canvas, font, mx_arrow, arrow_y, white, arrow_line)
 		# Bases diamond centered around (31,18) (shifted left 1) + outs dots above
 		b1,b2,b3 = game.bases
-		occ = (255,215,0)
+		# Occupied base color changed to red per request
+		occ = (255,0,0)
 		emp = (60,60,60)
 		def setp(x,y,color):
 			try: canvas.SetPixel(x,y,*color)
