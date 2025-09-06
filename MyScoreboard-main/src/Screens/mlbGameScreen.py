@@ -70,9 +70,13 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 					px = x + ox
 					if px < 0 or px >= 64:
 						continue
-					r, g, b, *rest = pix[x, y]
-					if has_alpha and rest and rest[0] == 0:
-						continue
+					val = pix[x, y]
+					if has_alpha and len(val) == 4:
+						r, g, b, a = val
+						if a < 90:  # skip mostly transparent feather pixels
+							continue
+					else:
+						r, g, b = val[:3]
 					try:
 						canvas.SetPixel(px, py, int(r), int(g), int(b))  # type: ignore[attr-defined]
 					except Exception:

@@ -139,48 +139,48 @@ def _remove_bg(img, tolerance: int = 38):
             else:
                 dst[x,y] = (r,g,b,255)
 
-    # Fringe cleanup: iterative dilation of transparency into near-background pixels to kill halo
-    edge_tol_primary = int(tolerance * 1.6)
-    edge_tol_secondary = int(tolerance * 2.2)
-    def similar_edge_primary(c):
+    # Feathered halo cleanup: create partial transparency for near-background pixels next to cleared area.
+    # Dist thresholds
+    full_clear = int(tolerance * 1.3)       # pixels this close to bg become fully transparent
+    feather_limit = int(tolerance * 2.6)    # beyond this we leave opaque
+    def bg_dist(c):
         r,g,b = c
-        return abs(r-avg[0]) + abs(g-avg[1]) + abs(b-avg[2]) <= edge_tol_primary
-    def similar_edge_secondary(c):
-        r,g,b = c
-        return abs(r-avg[0]) + abs(g-avg[1]) + abs(b-avg[2]) <= edge_tol_secondary
-    # Pass 1: primary threshold
-    for _ in range(2):  # two iterations
-        to_clear = []
-        for y in range(h):
-            for x in range(w):
-                r,g,b,a = dst[x,y]
-                if a == 0:
-                    continue
-                if not similar_edge_primary((r,g,b)):
-                    continue
-                for nx,ny in ((x+1,y),(x-1,y),(x,y+1),(x,y-1)):
-                    if 0 <= nx < w and 0 <= ny < h and dst[nx,ny][3] == 0:
-                        to_clear.append((x,y)); break
-        for x,y in to_clear:
-            dst[x,y] = (0,0,0,0)
-    # Pass 2: secondary (looser) only one iteration
-    to_clear2 = []
+        return abs(r-avg[0]) + abs(g-avg[1]) + abs(b-avg[2])
+    # Gather candidates adjacent to transparency
+    updates: list[tuple[int,int,int]] = []  # x,y,new_alpha
     for y in range(h):
         for x in range(w):
             r,g,b,a = dst[x,y]
             if a == 0:
                 continue
-            if not similar_edge_secondary((r,g,b)):
-                continue
+            # must touch transparency
+            touching = False
             for nx,ny in ((x+1,y),(x-1,y),(x,y+1),(x,y-1)):
                 if 0 <= nx < w and 0 <= ny < h and dst[nx,ny][3] == 0:
-                    to_clear2.append((x,y)); break
-    for x,y in to_clear2:
-        dst[x,y] = (0,0,0,0)
+                    touching = True
+                    break
+            if not touching:
+                continue
+            d = bg_dist((r,g,b))
+            if d <= full_clear:
+                updates.append((x,y,0))
+            elif d <= feather_limit:
+                # map d in (full_clear, feather_limit] -> alpha (0->255)
+                ratio = (d - full_clear) / max(1,(feather_limit - full_clear))
+                alpha = int(255 * ratio)
+                if alpha < 70:  # prune almost-gone
+                    alpha = 0
+                updates.append((x,y,alpha))
+    for x,y,a in updates:
+        if a == 0:
+            dst[x,y] = (0,0,0,0)
+        else:
+            r,g,b,_ = dst[x,y]
+            dst[x,y] = (r,g,b,a)
     return out
 
 _PROC_CACHE: Dict[Tuple[str, int, str, int], object] = {}
-_BG_ALGO_VERSION = 5  # bump after aggressive halo removal
+_BG_ALGO_VERSION = 6  # feathered halo removal to reduce color outline
 
 def get_processed_logo(sport: str, team_abbr: str, *, url: Optional[str], size: int, remove_bg: bool) -> Optional[object]:
     """High-level accessor returning possibly background-removed, resized logo.
