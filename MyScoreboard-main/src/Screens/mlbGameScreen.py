@@ -48,13 +48,10 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 
 	if show_logos and big_layout and width >= 48 and height >= 24:
 		# Big side logo layout
-		BIG = 28
-		MEDIUM = 22
-		SMALL = 14
-		EXTRA_SMALL = 10
+		BIG = 26  # nominal target height
 		# Fetch processed logos (background removed)
-		left_img = get_processed_logo('mlb', game.away.abbr, url=game.away.logo, size=MEDIUM, remove_bg=True)
-		right_img = get_processed_logo('mlb', game.home.abbr, url=game.home.logo, size=MEDIUM, remove_bg=True)
+		left_img = get_processed_logo('mlb', game.away.abbr, url=game.away.logo, size=BIG, remove_bg=True)
+		right_img = get_processed_logo('mlb', game.home.abbr, url=game.home.logo, size=BIG, remove_bg=True)
 		# Draw with partial off-screen effect via per-pixel plot
 		def blit(img, ox):
 			if img is None:
@@ -66,7 +63,7 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 			w, h = img.size
 			pix = img.load()
 			for y in range(h):
-				py = y + 2  # slight vertical offset
+				py = y + 4  # push logos down to free top rows for text
 				if py >= 32:
 					break
 				for x in range(w):
@@ -84,54 +81,54 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 						canvas.SetPixel(px, py, int(r), int(g), int(b))  # type: ignore[attr-defined]
 					except Exception:
 						pass
-		# Left logo partly off left edge
-		blit(left_img, -4)
-		# Right logo partly off right edge
+		# Left & right logos
+		blit(left_img, -6)  # move slightly further left
 		if right_img:
-			blit(right_img, 64 - (BIG - 4))
-		# New top-left stack layout per spec
-		from ..Screens.common import graphics, FontManager
+			blit(right_img, 64 - (BIG - 6))
+		from ..Screens.common import graphics, FontManager, center_x
 		font = FontManager.get_font()
 		white = graphics.Color(255,255,255)
-		# Line 1: T/B + inning number + outs (e.g., T6 2O)
+		# Game state centered top row (row 7 baseline)
 		inning_line = game._period_text()
 		half_char = 'T' if game.half.startswith('top') else ('B' if game.half.startswith('bot') else '')
 		inning_num = ''.join(ch for ch in inning_line if ch.isdigit()) if inning_line else ''
 		outs_val = game.raw.get('outs')
 		outs_part = f" {outs_val}O" if isinstance(outs_val, int) else ''
-		state_line = f"{half_char}{inning_num}{outs_part}"[:7]
-		graphics.DrawText(canvas, font, 0, 7, white, state_line)
-		# Line 2: Arrow pointing to batting team abbreviation
+		state_line = f"{half_char}{inning_num}{outs_part}" or inning_line
+		if state_line:
+			mx = center_x(state_line[:8])
+			graphics.DrawText(canvas, font, mx, 7, white, state_line[:8])
+		# Arrow to batting team (row 13)
 		batting_abbr = game.away.abbr if half_char == 'T' else game.home.abbr
-		arrow_line = f"> {batting_abbr}"[:7]
-		graphics.DrawText(canvas, font, 0, 13, white, arrow_line)
-		# Line 3: Base diamond (using small 5x5 area) origin (0,14)
+		arrow_line = f"> {batting_abbr}"[:8]
+		mx2 = center_x(arrow_line)
+		graphics.DrawText(canvas, font, mx2, 13, white, arrow_line)
+		# Bases diamond centered (approx) around row 18
 		b1,b2,b3 = game.bases
-		occ = (255,215,0)  # gold
-		emp = (70,70,70)
+		occ = (255,215,0)
+		emp = (60,60,60)
 		def setp(x,y,color):
 			try: canvas.SetPixel(x,y,*color)
 			except Exception: pass
-		# Coordinates shaped like diamond
-		# Second base (2,15)
-		setp(2,15, occ if b2 else emp)
-		# First (4,17)
-		setp(4,17, occ if b1 else emp)
-		# Third (0,17)
-		setp(0,17, occ if b3 else emp)
-		# Home (2,19) faint marker
-		setp(2,19,(180,180,180))
-		# Optional connecting outline (light)
-		for (x,y) in [(1,16),(2,17),(3,16),(2,15),(1,16)]:
-			setp(x,y,(40,40,40))
-		# Line 4: Score just below (0,25)
+		base_center_x = 32
+		base_center_y = 18
+		# Offsets relative to center (second up, first right-down, third left-down, home down)
+		setp(base_center_x, base_center_y-2, occ if b2 else emp)      # Second
+		setp(base_center_x+2, base_center_y, occ if b1 else emp)      # First
+		setp(base_center_x-2, base_center_y, occ if b3 else emp)      # Third
+		setp(base_center_x, base_center_y+2, (180,180,180))           # Home
+		# Outline (light gray)
+		for (dx,dy) in [(-1,-1),(0,-2),(1,-1),(2,0),(1,1),(0,2),(-1,1),(-2,0)]:
+			setp(base_center_x+dx, base_center_y+dy, (40,40,40))
+		# Score line (row 26)
 		score_combo = f"{game.away.score}-{game.home.score}"[:9]
-		graphics.DrawText(canvas, font, 0, 25, white, score_combo)
-		# Batter/Pitcher right side small labels (to avoid overlap with logos auto region)
+		mxs = center_x(score_combo)
+		graphics.DrawText(canvas, font, mxs, 26, white, score_combo)
+		# Batter/Pitcher abbreviations lower corners
 		if game.batter:
-			graphics.DrawText(canvas, font, 24, 11, white, game.batter[:8])
+			graphics.DrawText(canvas, font, 2, 30, white, game.batter[:8])
 		if game.pitcher:
-			graphics.DrawText(canvas, font, 24, 19, white, game.pitcher[:8])
+			graphics.DrawText(canvas, font, 64 - (len(game.pitcher[:8])*4) - 2, 30, white, game.pitcher[:8])
 	else:
 		# Fallback to original compact layout
 		lines_raw = game_leaders_lines(game) if leaders else game_primary_lines(game)
