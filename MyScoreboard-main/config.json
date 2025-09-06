@@ -1,5 +1,5 @@
 {
-  "active_mode": "mlb_focus",
+  "active_mode": "nfl_focus",
   "modes": {
     "all": {
       "rotation": ["nfl", "mlb", "prem"],
@@ -10,7 +10,7 @@
     },
     "nfl_focus": {
       "rotation": ["nfl"],
-      "nfl": {"show_leaders": true, "leader_mode": "all", "per_game_seconds": 12},
+      "nfl": {"show_leaders": false, "leader_mode": "all", "per_game_seconds": 5},
       "duration_multiplier": 1.2
     },
     "prem_morning": {

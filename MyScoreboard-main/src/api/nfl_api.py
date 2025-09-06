@@ -77,6 +77,10 @@ class nfl_api:
         competitors = comp.get("competitors", [])
         home_block = next((c for c in competitors if c.get("homeAway") == "home"), competitors[0] if competitors else {})
         away_block = next((c for c in competitors if c.get("homeAway") == "away"), competitors[1] if len(competitors) > 1 else {})
+        venue_block = comp.get("venue", {}) or {}
+        venue_name = None
+        if isinstance(venue_block, dict):
+            venue_name = venue_block.get("fullName") or venue_block.get("name")
 
         return {
             "id": event.get("id"),
@@ -94,6 +98,7 @@ class nfl_api:
                 "downDistanceText": situation.get("downDistanceText"),
                 "possession": situation.get("possession"),
             },
+            "venue": venue_name,
         }
 
     @staticmethod
