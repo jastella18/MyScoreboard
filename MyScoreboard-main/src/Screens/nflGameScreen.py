@@ -80,7 +80,7 @@ def render_game(matrix, game: NFLGame, leaders: bool = False, hold: float = 2.5,
 			txt = fit(game.home.record, w_logo)
 			start_x = width - w_logo + max(0, (w_logo - len(txt)*4)//2)
 			graphics.DrawText(canvas, font, start_x, name_y, white, txt)
-		# Time top center (UTC -> Eastern) - shifted down 4px (y=10)
+		# Time top center (UTC -> Eastern) - dropped additional 3px (now y=13)
 		start_iso = getattr(game, 'start_time', None) or game.start_time
 		show_time = ''
 		if isinstance(start_iso, str) and 'T' in start_iso:
@@ -104,7 +104,7 @@ def render_game(matrix, game: NFLGame, leaders: bool = False, hold: float = 2.5,
 		if not show_time:
 			show_time = 'TBD'
 		mx_time = center_x_width(show_time, 6)
-		graphics.DrawText(canvas, bold_font, mx_time, 10, white, show_time)
+		graphics.DrawText(canvas, bold_font, mx_time, 13, white, show_time)
 		# Day-of-week abbreviation under time
 		dow = ''
 		try:
@@ -120,7 +120,8 @@ def render_game(matrix, game: NFLGame, leaders: bool = False, hold: float = 2.5,
 			except Exception: dow = ''
 		if dow:
 			mx_dow = center_x_width(dow, 4)
-			graphics.DrawText(canvas, font, mx_dow, 12, white, dow)
+			# DOW dropped 4px (now y=16)
+			graphics.DrawText(canvas, font, mx_dow, 16, white, dow)
 		# Odds centered (compose concise odds line) - shifted down 5px (y=24)
 		odds = game.raw.get('odds') or {}
 		odds_line = ''
@@ -160,10 +161,10 @@ def render_game(matrix, game: NFLGame, leaders: bool = False, hold: float = 2.5,
 			if r_med and game.home.record:
 				w_logo = r_med.size[0]; txt = fit(game.home.record, w_logo); start_x = width - w_logo + max(0, (w_logo - len(txt)*4)//2)
 				graphics.DrawText(canvas, font, start_x, name_y, white, txt)
-			# Time & DOW (time y moved from 6 -> 10)
-			graphics.DrawText(canvas, bold_font, mx_time, 8, white, show_time)
+			# Time & DOW (time y=13, DOW y=16)
+			graphics.DrawText(canvas, bold_font, mx_time, 13, white, show_time)
 			if dow:
-				graphics.DrawText(canvas, font, mx_dow, 12, white, dow)
+				graphics.DrawText(canvas, font, mx_dow, 16, white, dow)
 			if odds_line:
 				graphics.DrawText(canvas, font, mx_odds, 24, white, odds_line)
 			offset = frame % loop_px
