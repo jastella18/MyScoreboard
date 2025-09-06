@@ -160,6 +160,7 @@ def parse_args():
     parser.add_argument("--no-led", action="store_true", help="Force stub mode even if library present (debug)")
     parser.add_argument("--test-pattern", action="store_true", help="Show a test pattern then exit")
     parser.add_argument("--debug", action="store_true", help="Verbose debug logging")
+    parser.add_argument("--mock", action="store_true", help="Use static mock dataset (no network calls)")
     return parser.parse_args()
 
 
@@ -202,6 +203,14 @@ def main():
     if args.test_pattern:
         _show_test_pattern(matrix)
         return
+    if args.mock:
+        try:
+            from . import scheduling
+            from .mock_data import mock_events
+            scheduling.enable_mock_mode(mock_events)
+            print("[INFO] Mock mode enabled (static sample events for nfl/mlb/prem).")
+        except Exception as exc:
+            print(f"[WARN] Failed to initialize mock mode: {exc}")
     print("[INFO] Starting rotation loop. Press Ctrl+C to exit.")
     try:
         run_rotation(matrix, debug=args.debug)

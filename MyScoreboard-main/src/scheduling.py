@@ -27,12 +27,29 @@ _cache: Dict[str, Dict[str, object]] = {
 	# sport: { 'timestamp': datetime, 'events': [event_dicts] }
 }
 
+# ----------------------------- Mock Support --------------------------------
+_mock_events: Dict[str, List[dict]] | None = None
+
+def enable_mock_mode(events: Dict[str, List[dict]]):
+	"""Enable mock mode with provided normalized events.
+
+	Passing an empty dict disables mock mode.
+	"""
+	global _mock_events
+	_mock_events = events or {}
+
+def mock_mode_enabled() -> bool:
+	return _mock_events is not None
+
 
 def _expired(ts: datetime) -> bool:
 	return datetime.utcnow() - ts > timedelta(seconds=CACHE_TTL_SECONDS)
 
 
 def _fetch_sport_raw(sport: str) -> List[dict]:
+	# If mock mode active, return static events (copy to avoid accidental mutation).
+	if _mock_events is not None:
+		return [dict(ev) for ev in _mock_events.get(sport, [])]
 	if sport == "nfl":
 		return nfl_api.get_all_events_data()
 	if sport == "mlb":
