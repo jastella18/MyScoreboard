@@ -119,8 +119,8 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 		setp(4,17, occ if b1 else emp)
 		# Third (0,17)
 		setp(0,17, occ if b3 else emp)
-		# Home (2,19) faint when no runner
-		setp(2,19, *( (180,180,180) ))
+		# Home (2,19) faint marker
+		setp(2,19,(180,180,180))
 		# Optional connecting outline (light)
 		for (x,y) in [(1,16),(2,17),(3,16),(2,15),(1,16)]:
 			setp(x,y,(40,40,40))
