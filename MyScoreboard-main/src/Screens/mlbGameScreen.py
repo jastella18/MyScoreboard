@@ -81,60 +81,95 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 						canvas.SetPixel(px, py, int(r), int(g), int(b))  # type: ignore[attr-defined]
 					except Exception:
 						pass
-		# Left & right logos
-		blit(left_img, -6)  # move slightly further left
+		# Left & right logos (slightly shifted)
+		blit(left_img, -6)
 		if right_img:
 			blit(right_img, 64 - (BIG - 6))
 		from ..Screens.common import graphics, FontManager, center_x
 		font = FontManager.get_font()
 		white = graphics.Color(255,255,255)
-		# Game state centered top row (row 7 baseline) showing full Top/Bottom wording
+		state = game.state or ""
+		# Pre-game: show only logos + @time
+		if state == 'pre':
+			# Extract HH:MM from start_time if present
+			start_iso = getattr(game, 'start_time', None) or game.start_time
+			show_time = ''
+			if isinstance(start_iso, str) and 'T' in start_iso:
+				# Rough parse
+				try:
+					clock_part = start_iso.split('T',1)[1]
+					show_time = clock_part[:5]
+				except Exception:
+					show_time = ''
+			line = f"@ {show_time}" if show_time else "@ TBD"
+			mx = center_x(line[:8])
+			graphics.DrawText(canvas, font, mx, 8, white, line[:8])
+			canvas = matrix.SwapOnVSync(canvas)
+			time.sleep(hold)
+			return
+		# Final: logos + score + FINAL
+		if state == 'post':
+			score_combo = f"{game.away.score}-{game.home.score}"[:9]
+			mxs = center_x(score_combo)
+			graphics.DrawText(canvas, font, mxs, 8, white, score_combo)
+			final_txt = "FINAL"
+			mxf = center_x(final_txt)
+			graphics.DrawText(canvas, font, mxf, 16, white, final_txt)
+			canvas = matrix.SwapOnVSync(canvas)
+			time.sleep(hold)
+			return
+		# In-progress layout
 		inning_line = game._period_text()
 		half_char = 'T' if game.half.startswith('top') else ('B' if game.half.startswith('bot') else '')
-		inning_num = ''.join(ch for ch in inning_line if ch.isdigit()) if inning_line else ''
-		full_half = 'Top' if half_char == 'T' else ('Bottom' if half_char == 'B' else '')
-		state_line = f"{full_half} {inning_num}".strip()
+		# If display inning like T6 convert to Top 6
+		if inning_line and inning_line[0] in ('T','B') and inning_line[1:].isdigit():
+			full_half = 'Top' if inning_line[0]=='T' else 'BOT'
+			inning_num = inning_line[1:]
+			state_line = f"{full_half} {inning_num}"
+		else:
+			inning_num = ''.join(ch for ch in inning_line if ch.isdigit()) if inning_line else ''
+			full_half = 'Top' if half_char == 'T' else ('BOT' if half_char == 'B' else '')
+			state_line = f"{full_half} {inning_num}".strip()
 		if state_line:
 			mx = center_x(state_line[:10])
-			graphics.DrawText(canvas, font, mx, 7, white, state_line[:10])
-		# Arrow to batting team (row 13)
-		batting_abbr = game.away.abbr if half_char == 'T' else game.home.abbr
-		arrow_line = f"> {batting_abbr}"[:8]
-		mx2 = center_x(arrow_line)
-		graphics.DrawText(canvas, font, mx2, 13, white, arrow_line)
-		# Bases diamond centered (approx) around row 18 + outs dots above
+			graphics.DrawText(canvas, font, mx, 6, white, state_line[:10])
+		# Arrow graphic pointing toward batting team's logo (row 12)
+		arrow_y = 12
+		def setp_raw(x,y,color):
+			try: canvas.SetPixel(x,y,*color)
+			except Exception: pass
+		if half_char == 'T':  # away batting -> arrow left
+			for (dx,dy) in [(32,arrow_y),(31,arrow_y),(30,arrow_y),(31,arrow_y-1),(31,arrow_y+1)]:
+				setp_raw(dx,dy,(255,255,255))
+		else:  # bottom -> arrow right
+			for (dx,dy) in [(32,arrow_y),(33,arrow_y),(34,arrow_y),(33,arrow_y-1),(33,arrow_y+1)]:
+				setp_raw(dx,dy,(255,255,255))
+		# Bases diamond centered around (31,18) (shifted left 1) + outs dots above
 		b1,b2,b3 = game.bases
 		occ = (255,215,0)
 		emp = (60,60,60)
 		def setp(x,y,color):
 			try: canvas.SetPixel(x,y,*color)
 			except Exception: pass
-		base_center_x = 32
+		base_center_x = 31
 		base_center_y = 18
-		# Outs as three dots above diamond (row base_center_y-4)
 		outs_val = game.raw.get('outs') if isinstance(game.raw.get('outs'), int) else 0
 		for i in range(3):
 			dot_x = base_center_x - 2 + i*2
-			dot_y = base_center_y - 4
-			color = (255,0,0) if i < outs_val else (70,70,70)  # red filled outs, gray remaining
+			dot_y = base_center_y - 5
+			color = (255,0,0) if i < outs_val else (70,70,70)
 			setp(dot_x, dot_y, color)
-		# Offsets relative to center (second up, first right-down, third left-down, home down)
 		setp(base_center_x, base_center_y-2, occ if b2 else emp)      # Second
 		setp(base_center_x+2, base_center_y, occ if b1 else emp)      # First
 		setp(base_center_x-2, base_center_y, occ if b3 else emp)      # Third
 		setp(base_center_x, base_center_y+2, (180,180,180))           # Home
-		# Outline (light gray)
 		for (dx,dy) in [(-1,-1),(0,-2),(1,-1),(2,0),(1,1),(0,2),(-1,1),(-2,0)]:
 			setp(base_center_x+dx, base_center_y+dy, (40,40,40))
-		# Score line (row 26)
+		# Score line at row 26
 		score_combo = f"{game.away.score}-{game.home.score}"[:9]
 		mxs = center_x(score_combo)
 		graphics.DrawText(canvas, font, mxs, 26, white, score_combo)
-		# Batter/Pitcher abbreviations lower corners
-		if game.batter:
-			graphics.DrawText(canvas, font, 2, 30, white, game.batter[:8])
-		if game.pitcher:
-			graphics.DrawText(canvas, font, 64 - (len(game.pitcher[:8])*4) - 2, 30, white, game.pitcher[:8])
+		# Batter/Pitcher not shown now (removed abbreviations per request)
 	else:
 		# Fallback to original compact layout
 		lines_raw = game_leaders_lines(game) if leaders else game_primary_lines(game)
