@@ -19,7 +19,7 @@ def game_leaders_lines(game: MLBGame) -> List[str]:
 
 
 
-def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5, show_logos: bool = True, big_layout: bool = True):
+def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5, show_logos: bool = True, big_layout: bool = False):
 	canvas = matrix.CreateFrameCanvas()
 	# Detect actual canvas size (fallback to assumed 64x32)
 	width = getattr(canvas, 'width', getattr(canvas, 'GetWidth', lambda: 64)()) if hasattr(canvas, 'width') else 64
