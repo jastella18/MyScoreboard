@@ -1,7 +1,7 @@
 """NFL screen rendering for tiny LED matrix.
 
-Provides functions to build per-game frames (score/status + leaders) and
-iterate through all current games.
+Enhanced pre-game layout (logos, records, time + DOW, centered odds, venue scroll)
+mirrors MLB concept.
 """
 from __future__ import annotations
 import time
@@ -68,7 +68,8 @@ def render_game(matrix, game: NFLGame, leaders: bool = False, hold: float = 2.5,
 			char_w = 4
 			if len(text)*char_w <= max_px: return text
 			return text[: max_px//char_w]
-		name_y = min(height - 3, MED + 4)
+		# Repositioned layout: time at 6, DOW at 12, odds centered (approx 19), records lower (~25)
+		name_y = min(height - 7, 25)
 		if l_med and game.away.record:
 			w_logo = l_med.size[0]
 			txt = fit(game.away.record, w_logo)
@@ -103,7 +104,42 @@ def render_game(matrix, game: NFLGame, leaders: bool = False, hold: float = 2.5,
 		if not show_time:
 			show_time = 'TBD'
 		mx_time = center_x_width(show_time, 6)
-		graphics.DrawText(canvas, bold_font, mx_time, 9, white, show_time)
+		graphics.DrawText(canvas, bold_font, mx_time, 6, white, show_time)
+		# Day-of-week abbreviation under time
+		dow = ''
+		try:
+			if 'local' in locals():
+				dow = local.strftime('%a').upper()
+		except Exception:
+			pass
+		if not dow and isinstance(start_iso, str) and 'T' in start_iso:
+			try:
+				from datetime import datetime as _dt
+				dt2 = _dt.fromisoformat(start_iso.replace('Z','+00:00'))
+				dow = dt2.strftime('%a').upper()
+			except Exception: dow = ''
+		if dow:
+			mx_dow = center_x_width(dow, 4)
+			graphics.DrawText(canvas, font, mx_dow, 12, white, dow)
+		# Odds centered (compose concise odds line)
+		odds = game.raw.get('odds') or {}
+		odds_line = ''
+		if isinstance(odds, dict):
+			details = odds.get('details')  # e.g. "NE -2.5"
+			ou = odds.get('overUnder')
+			if details and ou:
+				odds_line = f"{details} O/U{ou}"
+			elif details:
+				odds_line = details
+			elif ou:
+				odds_line = f"O/U {ou}"
+		# Fit odds line inside width (4px per char)
+		max_chars = width // 4
+		if len(odds_line) > max_chars:
+			odds_line = odds_line[:max_chars]
+		if odds_line:
+			mx_odds = (width - len(odds_line)*4)//2
+			graphics.DrawText(canvas, font, mx_odds, 19, white, odds_line)
 		# Venue scroll bottom
 		venue = (game.raw.get('venue') or '') or f"{game.away.abbr} @ {game.home.abbr}"
 		scroll_text = f"  {venue.upper()}  "
@@ -124,7 +160,12 @@ def render_game(matrix, game: NFLGame, leaders: bool = False, hold: float = 2.5,
 			if r_med and game.home.record:
 				w_logo = r_med.size[0]; txt = fit(game.home.record, w_logo); start_x = width - w_logo + max(0, (w_logo - len(txt)*4)//2)
 				graphics.DrawText(canvas, font, start_x, name_y, white, txt)
-			graphics.DrawText(canvas, bold_font, mx_time, 9, white, show_time)
+			# Time & DOW
+			graphics.DrawText(canvas, bold_font, mx_time, 6, white, show_time)
+			if dow:
+				graphics.DrawText(canvas, font, mx_dow, 12, white, dow)
+			if odds_line:
+				graphics.DrawText(canvas, font, mx_odds, 19, white, odds_line)
 			offset = frame % loop_px
 			start_x_px = width - offset
 			for idx, ch in enumerate(scroll_text):

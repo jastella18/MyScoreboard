@@ -81,6 +81,30 @@ class nfl_api:
         venue_name = None
         if isinstance(venue_block, dict):
             venue_name = venue_block.get("fullName") or venue_block.get("name")
+        # Odds extraction (ESPN provides an odds array; take first)
+        odds_block = None
+        odds_list = comp.get("odds") or []
+        if isinstance(odds_list, list) and odds_list:
+            odds_block = odds_list[0]
+        odds_out = {}
+        if isinstance(odds_block, dict):
+            odds_out["details"] = odds_block.get("details")  # e.g., "NE -2.5"
+            odds_out["overUnder"] = odds_block.get("overUnder")
+            odds_out["spread"] = odds_block.get("spread")
+            # Moneyline nested under moneyline.home/away.open/close.odds or homeTeamOdds/awayTeamOdds
+            ml = odds_block.get("moneyline") or {}
+            if isinstance(ml, dict):
+                home_ml = ((ml.get("home") or {}).get("close") or {}).get("odds") or ((ml.get("home") or {}).get("open") or {}).get("odds")
+                away_ml = ((ml.get("away") or {}).get("close") or {}).get("odds") or ((ml.get("away") or {}).get("open") or {}).get("odds")
+                if home_ml: odds_out["home_ml"] = home_ml
+                if away_ml: odds_out["away_ml"] = away_ml
+            # Fallback money lines from team odds blocks
+            if not odds_out.get("home_ml"):
+                hto = odds_block.get("homeTeamOdds") or {}
+                odds_out["home_ml"] = hto.get("moneyLine") if isinstance(hto, dict) else None
+            if not odds_out.get("away_ml"):
+                ato = odds_block.get("awayTeamOdds") or {}
+                odds_out["away_ml"] = ato.get("moneyLine") if isinstance(ato, dict) else None
 
         return {
             "id": event.get("id"),
@@ -99,6 +123,7 @@ class nfl_api:
                 "possession": situation.get("possession"),
             },
             "venue": venue_name,
+            "odds": odds_out if odds_out else None,
         }
 
     @staticmethod
