@@ -6,6 +6,11 @@ iterate through all current games.
 from __future__ import annotations
 import time
 from typing import Iterable, List
+from datetime import datetime
+try:
+	from zoneinfo import ZoneInfo  # Python 3.9+
+except Exception:  # pragma: no cover
+	ZoneInfo = None  # type: ignore
 from ..GameClasses.nflGame import NFLGame
 from ..logo_cache import get_processed_logo
 from .common import prepare_lines, draw_frame
@@ -74,14 +79,29 @@ def render_game(matrix, game: NFLGame, leaders: bool = False, hold: float = 2.5,
 			txt = fit(game.home.record, w_logo)
 			start_x = width - w_logo + max(0, (w_logo - len(txt)*4)//2)
 			graphics.DrawText(canvas, font, start_x, name_y, white, txt)
-		# Time top center
+		# Time top center (UTC -> Eastern)
 		start_iso = getattr(game, 'start_time', None) or game.start_time
-		# Reuse MLB time formatter via simple local fallback (HH:MM from ISO)
 		show_time = ''
 		if isinstance(start_iso, str) and 'T' in start_iso:
-			iso = start_iso.split('T',1)[1]
-			show_time = iso[:5]
-		if not show_time: show_time = 'TBD'
+			iso_full = start_iso.strip()
+			if iso_full.endswith('Z'):
+				iso_full = iso_full[:-1] + '+00:00'
+			try:
+				dt = datetime.fromisoformat(iso_full)
+				if dt.tzinfo is None and ZoneInfo:
+					dt = dt.replace(tzinfo=ZoneInfo('UTC'))
+				if ZoneInfo:
+					local = dt.astimezone(ZoneInfo('America/New_York'))
+					show_time = f"{local.hour:02d}:{local.minute:02d}"
+				else:
+					show_time = iso_full.split('T',1)[1][:5]
+			except Exception:
+				try:
+					show_time = iso_full.split('T',1)[1][:5]
+				except Exception:
+					show_time = ''
+		if not show_time:
+			show_time = 'TBD'
 		mx_time = center_x_width(show_time, 6)
 		graphics.DrawText(canvas, bold_font, mx_time, 9, white, show_time)
 		# Venue scroll bottom
