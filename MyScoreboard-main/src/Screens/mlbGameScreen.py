@@ -265,7 +265,7 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 				name_txt = _fit_name(home_p, w_logo)
 				start_x = width - w_logo + max(0, (w_logo - len(name_txt)*4)//2)
 				graphics.DrawText(canvas, font, start_x, name_y, white, name_txt)
-			# Venue in middle: split into up to two lines (smart break) and center
+			# Venue centered between pitcher names and time (raised)
 			venue = getattr(game, 'venue', '')
 			if venue:
 				v_clean = venue.replace('  ', ' ').strip()
@@ -281,12 +281,16 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 							cur.append(w)
 						else:
 							break
-						rem_start = len(cur)
 					line1 = ' '.join(cur) if cur else parts[0]
 					line2 = ' '.join(parts[len(cur):])[:12]
-				# Center lines vertically between names and time (names at name_y, time near bottom)
-				mid_top = name_y + 2
-				v_line1_y = min(height - 6, mid_top)
+				# Compute vertical placement: center block (1 or 2 lines) between name_y+1 and time_y-2
+				lines_count = 2 if line2 else 1
+				block_height = 6 * lines_count
+				upper_bound = name_y + 1
+				lower_bound = (height - 1) - 2  # a couple pixels above time baseline
+				# target center
+				target_mid = (upper_bound + lower_bound) // 2
+				v_line1_y = max(upper_bound, min(lower_bound - block_height, target_mid - (block_height // 2)))
 				v_line2_y = v_line1_y + 6 if line2 else v_line1_y
 				for txt,ypos in ((line1,v_line1_y),(line2,v_line2_y) if line2 else (None,None)):
 					if not txt: continue
@@ -481,7 +485,7 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 				name_txt = _fit_name(home_p, w_logo)
 				start_x = width - w_logo + max(0, (w_logo - len(name_txt)*4)//2)
 				graphics.DrawText(canvas, font, start_x, name_y, white, name_txt)
-			# Venue (two-line center) same logic as medium layout
+			# Venue centered between pitcher names and time (raised)
 			venue = getattr(game, 'venue', '')
 			if venue:
 				v_clean = venue.replace('  ', ' ').strip()
@@ -497,8 +501,12 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 							break
 					line1 = ' '.join(cur) if cur else parts[0]
 					line2 = ' '.join(parts[len(cur):])[:12]
-				mid_top = name_y + 2
-				v_line1_y = min(height - 6, mid_top)
+				lines_count = 2 if line2 else 1
+				block_height = 6 * lines_count
+				upper_bound = name_y + 1
+				lower_bound = (height - 1) - 2
+				target_mid = (upper_bound + lower_bound) // 2
+				v_line1_y = max(upper_bound, min(lower_bound - block_height, target_mid - (block_height // 2)))
 				v_line2_y = v_line1_y + 6 if line2 else v_line1_y
 				for txt,ypos in ((line1,v_line1_y),(line2,v_line2_y) if line2 else (None,None)):
 					if not txt: continue
