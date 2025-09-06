@@ -99,12 +99,29 @@ class mlb_api:
         comp = competitions[0] if competitions else {}
         status_block = comp.get("status", {})
         type_block = status_block.get("type", {})
+        # Some ESPN variants put shortDetail/detail inside type_block (e.g., "Top 5th"). Capture for fallback parsing.
+        detail_texts = [
+            type_block.get("shortDetail") or "",
+            type_block.get("detail") or "",
+            status_block.get("type", {}).get("shortDetail") or "",
+            status_block.get("type", {}).get("detail") or "",
+        ]
         competitors = comp.get("competitors", [])
         home_block = next((c for c in competitors if c.get("homeAway") == "home"), competitors[0] if competitors else {})
         away_block = next((c for c in competitors if c.get("homeAway") == "away"), competitors[1] if len(competitors) > 1 else {})
         situation = comp.get("situation", {})
         # Extract richer situation data (inning half, outs, batter, pitcher)
         half = (situation.get("halfInning") or situation.get("inningHalf") or "").lower()
+        if not half:
+            # Fallback parse from textual detail (e.g., "Bot 4th", "Top 7th")
+            import re
+            joined = " | ".join(t for t in detail_texts if t)
+            m = re.search(r"\b(Top|Bot|Bottom)\b", joined, re.IGNORECASE)
+            if m:
+                val = m.group(1).lower()
+                if val.startswith("top"): half = "top"
+                elif val.startswith("bot"): half = "bot"
+                elif val.startswith("bottom"): half = "bot"
         inning_num = situation.get("inning") or status_block.get("period")
         if half and inning_num:
             if half.startswith("top"):
@@ -149,6 +166,8 @@ class mlb_api:
             "on_first": on_first,
             "on_second": on_second,
             "on_third": on_third,
+            # Include raw sub-dict for richer debugging / future use (arrow logic previously queried this)
+            "situation_raw": situation,
         }
 
     @staticmethod
