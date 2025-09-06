@@ -88,22 +88,21 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 		from ..Screens.common import graphics, FontManager, center_x
 		font = FontManager.get_font()
 		white = graphics.Color(255,255,255)
-		# Game state centered top row (row 7 baseline)
+		# Game state centered top row (row 7 baseline) showing full Top/Bottom wording
 		inning_line = game._period_text()
 		half_char = 'T' if game.half.startswith('top') else ('B' if game.half.startswith('bot') else '')
 		inning_num = ''.join(ch for ch in inning_line if ch.isdigit()) if inning_line else ''
-		outs_val = game.raw.get('outs')
-		outs_part = f" {outs_val}O" if isinstance(outs_val, int) else ''
-		state_line = f"{half_char}{inning_num}{outs_part}" or inning_line
+		full_half = 'Top' if half_char == 'T' else ('Bottom' if half_char == 'B' else '')
+		state_line = f"{full_half} {inning_num}".strip()
 		if state_line:
-			mx = center_x(state_line[:8])
-			graphics.DrawText(canvas, font, mx, 7, white, state_line[:8])
+			mx = center_x(state_line[:10])
+			graphics.DrawText(canvas, font, mx, 7, white, state_line[:10])
 		# Arrow to batting team (row 13)
 		batting_abbr = game.away.abbr if half_char == 'T' else game.home.abbr
 		arrow_line = f"> {batting_abbr}"[:8]
 		mx2 = center_x(arrow_line)
 		graphics.DrawText(canvas, font, mx2, 13, white, arrow_line)
-		# Bases diamond centered (approx) around row 18
+		# Bases diamond centered (approx) around row 18 + outs dots above
 		b1,b2,b3 = game.bases
 		occ = (255,215,0)
 		emp = (60,60,60)
@@ -112,6 +111,13 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 			except Exception: pass
 		base_center_x = 32
 		base_center_y = 18
+		# Outs as three dots above diamond (row base_center_y-4)
+		outs_val = game.raw.get('outs') if isinstance(game.raw.get('outs'), int) else 0
+		for i in range(3):
+			dot_x = base_center_x - 2 + i*2
+			dot_y = base_center_y - 4
+			color = (255,0,0) if i < outs_val else (70,70,70)  # red filled outs, gray remaining
+			setp(dot_x, dot_y, color)
 		# Offsets relative to center (second up, first right-down, third left-down, home down)
 		setp(base_center_x, base_center_y-2, occ if b2 else emp)      # Second
 		setp(base_center_x+2, base_center_y, occ if b1 else emp)      # First
