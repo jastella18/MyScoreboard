@@ -6,7 +6,8 @@ Gracefully returns None if file missing.
 """
 from __future__ import annotations
 import os
-from typing import Dict, Tuple, Optional
+from typing import Dict, Tuple, Optional, Deque
+from collections import deque
 import threading
 import time
 import requests
@@ -71,35 +72,73 @@ def get_logo_from_url(url: str, cache_key: str, size: int = 14):
     except Exception:
         return None
 
-def _remove_bg(img, tolerance: int = 40):
-    """Return a copy with background (assumed near corner color) made transparent.
-    If Pillow doesn't support alpha on target, we keep RGB but skip background pixels in drawing code.
-    We'll store the processed image with alpha for later per-pixel blit.
+def _remove_bg(img, tolerance: int = 38):
+    """Background removal tuned for sports logos.
+
+    Rules:
+    - If image already has any transparency, keep it (assume proper PNG provided) to avoid destroying anti-aliased edges.
+    - Otherwise perform a corner flood-fill (4 corners as seeds) and remove ONLY contiguous regions within tolerance.
+      This avoids wiping interior colors similar to background.
+    - Tolerance is sum of absolute RGB diffs (Manhattan distance).
     """
     try:
         from PIL import Image  # type: ignore
     except Exception:
         return img
-    if img.mode != 'RGB' and img.mode != 'RGBA':
+    if img.mode not in ('RGB', 'RGBA'):
         img = img.convert('RGB')
-    px0 = img.getpixel((0, 0))
-    if isinstance(px0, int):  # unlikely
-        return img
-    r0, g0, b0 = px0[:3]
+
+    # Preserve images that already contain transparency
+    if img.mode == 'RGBA':
+        alpha = img.getchannel('A')
+        # If any pixel fully transparent we assume author-supplied transparency is correct.
+        if any(a == 0 for a in alpha.getdata()):
+            return img  # Trust original
+        # else treat as opaque RGBA -> treat like RGB by converting
+        img = img.convert('RGB')
+
     w, h = img.size
-    new = Image.new('RGBA', (w, h))
     src = img.load()
-    dst = new.load()
+    # Collect corner colors
+    corners = [src[0,0], src[w-1,0], src[0,h-1], src[w-1,h-1]]
+    # Use average corner color as baseline (helps with gradient corners)
+    avg = tuple(sum(c[i] for c in corners)//4 for i in range(3))
+
+    def similar(c):
+        r,g,b = c
+        return abs(r-avg[0]) + abs(g-avg[1]) + abs(b-avg[2]) <= tolerance
+
+    visited = [[False]*w for _ in range(h)]
+    q: Deque[Tuple[int,int]] = deque()
+    # Seed corners
+    for (cx, cy) in [(0,0),(w-1,0),(0,h-1),(w-1,h-1)]:
+        if similar(src[cx,cy]):
+            q.append((cx,cy))
+            visited[cy][cx] = True
+
+    transparent = set()
+    while q:
+        x,y = q.popleft()
+        transparent.add((x,y))
+        for nx, ny in ((x+1,y),(x-1,y),(x,y+1),(x,y-1)):
+            if 0 <= nx < w and 0 <= ny < h and not visited[ny][nx]:
+                if similar(src[nx,ny]):
+                    visited[ny][nx] = True
+                    q.append((nx,ny))
+    # Build RGBA output, only removing flood area
+    out = Image.new('RGBA', (w,h))
+    dst = out.load()
     for y in range(h):
         for x in range(w):
-            r, g, b = src[x, y][:3]
-            if abs(r - r0) + abs(g - g0) + abs(b - b0) <= tolerance:
-                dst[x, y] = (0, 0, 0, 0)
+            r,g,b = src[x,y][:3]
+            if (x,y) in transparent:
+                dst[x,y] = (0,0,0,0)
             else:
-                dst[x, y] = (r, g, b, 255)
-    return new
+                dst[x,y] = (r,g,b,255)
+    return out
 
-_PROC_CACHE: Dict[Tuple[str, int, str], object] = {}
+_PROC_CACHE: Dict[Tuple[str, int, str, int], object] = {}
+_BG_ALGO_VERSION = 2
 
 def get_processed_logo(sport: str, team_abbr: str, *, url: Optional[str], size: int, remove_bg: bool) -> Optional[object]:
     """High-level accessor returning possibly background-removed, resized logo.
@@ -107,7 +146,7 @@ def get_processed_logo(sport: str, team_abbr: str, *, url: Optional[str], size: 
     Order: local cached asset -> remote fetch -> processing -> cache.
     """
     base_key = f"{sport}:{team_abbr}".upper()
-    proc_key = (base_key, size, 'nobg' if remove_bg else 'raw')
+    proc_key = (base_key, size, 'nobg' if remove_bg else 'raw', _BG_ALGO_VERSION)
     if proc_key in _PROC_CACHE:
         return _PROC_CACHE[proc_key]
     img = get_logo(sport, team_abbr, size=size)
