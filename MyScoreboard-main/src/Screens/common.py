@@ -126,6 +126,21 @@ def draw_frame(canvas, lines: List[str], *, start_y: int = 6, line_height: int =
         graphics.DrawText(canvas, font, x, y, color, line)
         y += line_height
 
+def draw_text_small_bold(canvas, font, x: int, y: int, color, text: str, *, style: str = "h1"):
+    """Simulate a bold effect for tiny (4x6) font by overdrawing with a 1px offset.
+
+    style options:
+      h1 : second pass at (x+1, y) (horizontal thicken)
+      hv : passes at (x+1,y) and (x,y+1) (heavier, costs extra draw)
+    Returns ending x position similar to rgbmatrix.graphics.DrawText.
+    """
+    end_x = graphics.DrawText(canvas, font, x, y, color, text)
+    if style in ("h1", "hv"):
+        end_x = graphics.DrawText(canvas, font, x + 1, y, color, text)
+    if style == "hv":
+        end_x = graphics.DrawText(canvas, font, x, y + 1, color, text)
+    return end_x
+
 __all__ = [
-    'wrap_text', 'truncate', 'center_x', 'prepare_lines', 'draw_frame', 'FontManager'
+    'wrap_text', 'truncate', 'center_x', 'prepare_lines', 'draw_frame', 'draw_text_small_bold', 'FontManager'
 ]

@@ -99,7 +99,7 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 		blit(left_img, -6)
 		if right_img:
 			blit(right_img, 64 - (BIG - 6))
-		from ..Screens.common import graphics, FontManager, center_x
+		from ..Screens.common import graphics, FontManager, center_x, draw_text_small_bold
 		font = FontManager.get_font()
 		white = gcolor(255,255,255)
 		state = game.state or ""
@@ -202,9 +202,9 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 			setp(base_center_x+dx, base_center_y+dy, (40,40,40))
 		# Score line at row 31 (was 28), shifted left by 2 pixels
 		score_combo = f"{game.away.score}-{game.home.score}"[:9]
-		bold_font = FontManager.get_font(bold=True)
+		# Simulated small bold (4x6) instead of large bold font for better fit
 		mxs = center_x(score_combo) - 2  # shift left by 2 pixels
-		graphics.DrawText(canvas, bold_font, mxs, 31, white, score_combo)  # drop 3 pixels (was 28)
+		draw_text_small_bold(canvas, font, mxs, 31, white, score_combo, style="h1")  # drop 3 pixels (was 28)
 		# Batter/Pitcher not shown now (removed abbreviations per request)
 	else:
 		# Fallback layout (manually draw with gamma-corrected text if requested)
