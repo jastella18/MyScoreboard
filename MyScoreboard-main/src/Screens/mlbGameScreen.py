@@ -21,7 +21,32 @@ def game_leaders_lines(game: MLBGame) -> List[str]:
 
 def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5, show_logos: bool = True, big_layout: bool = True):
 	canvas = matrix.CreateFrameCanvas()
-	if show_logos and big_layout:
+	# Detect actual canvas size (fallback to assumed 64x32)
+	width = getattr(canvas, 'width', getattr(canvas, 'GetWidth', lambda: 64)()) if hasattr(canvas, 'width') else 64
+	height = getattr(canvas, 'height', getattr(canvas, 'GetHeight', lambda: 32)()) if hasattr(canvas, 'height') else 32
+
+	# Ultra-small display handling (e.g., ~12x6). Provide compressed single-line output.
+	if width <= 20 or height <= 8:
+		from ..Screens.common import graphics, FontManager
+		font = FontManager.get_font()
+		white = graphics.Color(255,255,255)
+		# Build compact token: A1-H2 (first letters) plus maybe inning if room
+		a_chr = game.away.abbr[:1]
+		h_chr = game.home.abbr[:1]
+		token = f"{a_chr}{game.away.score}-{h_chr}{game.home.score}"[:width // 4]  # crude trim
+		# Try to append inning indicator if space (e.g., '5')
+		inn = str(game.period) if game.period else ''
+		if inn and len(token)*4 + 4 <= width:
+			token += inn
+		# Center horizontally
+		x = max(0, (width - len(token)*4)//2)
+		y = min(height - 1, height - 1)  # Baseline at bottom
+		graphics.DrawText(canvas, font, x, y, white, token)
+		matrix.SwapOnVSync(canvas)
+		time.sleep(hold)
+		return
+
+	if show_logos and big_layout and width >= 48 and height >= 24:
 		# Big side logo layout
 		BIG = 28
 		# Fetch processed logos (background removed)
