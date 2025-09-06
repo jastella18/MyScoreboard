@@ -106,6 +106,14 @@ def center_x(text: str, panel_width: int = 64, char_width: int = 4) -> int:
     text_w = len(text) * char_width
     return max(0, (panel_width - text_w) // 2)
 
+def center_x_width(text: str, glyph_w: int, panel_width: int = 64) -> int:
+    """Center text assuming a specific glyph width in pixels.
+
+    Use for fonts wider than the default 4px (e.g., 6x13 bold font).
+    """
+    text_w = len(text) * glyph_w
+    return max(0, (panel_width - text_w) // 2)
+
 def prepare_lines(raw_lines: Iterable[str], max_lines: int = 5, max_chars: int = 15) -> List[str]:
     out: List[str] = []
     for line in raw_lines:
@@ -142,5 +150,5 @@ def draw_text_small_bold(canvas, font, x: int, y: int, color, text: str, *, styl
     return end_x
 
 __all__ = [
-    'wrap_text', 'truncate', 'center_x', 'prepare_lines', 'draw_frame', 'draw_text_small_bold', 'FontManager'
+    'wrap_text', 'truncate', 'center_x', 'center_x_width', 'prepare_lines', 'draw_frame', 'draw_text_small_bold', 'FontManager'
 ]

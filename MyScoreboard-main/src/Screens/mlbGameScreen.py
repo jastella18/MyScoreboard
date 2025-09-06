@@ -99,7 +99,7 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 		blit(left_img, -6)
 		if right_img:
 			blit(right_img, 64 - (BIG - 6))
-		from ..Screens.common import graphics, FontManager, center_x, draw_text_small_bold
+		from ..Screens.common import graphics, FontManager, center_x, center_x_width, draw_text_small_bold
 		font = FontManager.get_font()  # base tiny font
 		bold_font = FontManager.get_font(bold=True)  # taller real bold for score
 		white = gcolor(255,255,255)
@@ -126,12 +126,12 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 		# Final: logos + score + FINAL
 		if state == 'post':
 			score_combo = f"{game.away.score}-{game.home.score}"[:9]
-			mxs = center_x(score_combo)
-			# Bold score near upper third to leave bottom for FINAL
-			graphics.DrawText(canvas, bold_font, mxs, 10, white, score_combo)
+			mxs = center_x_width(score_combo, 6)
+			# Bold score baseline y=13 (keeps full 13px glyph visible: rows 1..13)
+			graphics.DrawText(canvas, bold_font, mxs, 13, white, score_combo)
 			final_txt = "FINAL"
-			mxf = center_x(final_txt)
-			# Place FINAL at very bottom baseline
+			mxf = center_x_width(final_txt, 6)
+			# FINAL at bottom baseline (31)
 			graphics.DrawText(canvas, bold_font, mxf, height - 1, white, final_txt)
 			canvas = matrix.SwapOnVSync(canvas)
 			time.sleep(hold)
@@ -206,9 +206,9 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 		setp(base_center_x, base_center_y+2, (180,180,180))           # Home
 		for (dx,dy) in [(-1,-1),(0,-2),(1,-1),(2,0),(1,1),(0,2),(-1,1),(-2,0)]:
 			setp(base_center_x+dx, base_center_y+dy, (40,40,40))
-		# Score line (use real bold font again) at row 31, shifted left by 2 pixels
+		# Score line (use real bold font) centered with 6px glyph width at row 31
 		score_combo = f"{game.away.score}-{game.home.score}"[:9]
-		mxs = center_x(score_combo) - 2
+		mxs = center_x_width(score_combo, 6)
 		graphics.DrawText(canvas, bold_font, mxs, 31, white, score_combo)
 		# Batter/Pitcher not shown now (removed abbreviations per request)
 	else:
