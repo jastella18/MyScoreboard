@@ -19,7 +19,7 @@ def game_leaders_lines(game: MLBGame) -> List[str]:
 
 
 
-def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5, show_logos: bool = True, big_layout: bool = True):
+def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5, show_logos: bool = True, big_layout: bool = True, gamma_correct: bool = False):
 	canvas = matrix.CreateFrameCanvas()
 	# Detect actual canvas size (fallback to assumed 64x32)
 	width = getattr(canvas, 'width', getattr(canvas, 'GetWidth', lambda: 64)()) if hasattr(canvas, 'width') else 64
@@ -52,6 +52,15 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 		# Fetch processed logos (background removed)
 		left_img = get_processed_logo('mlb', game.away.abbr, url=game.away.logo, size=BIG, remove_bg=True)
 		right_img = get_processed_logo('mlb', game.home.abbr, url=game.home.logo, size=BIG, remove_bg=True)
+		# Optional gamma correction (apply to logo pixels only). Typical LED panels benefit from ~2.2.
+		if gamma_correct:
+			if not hasattr(render_game, "_gamma_lut"):
+				g = 2.2
+				render_game._gamma_lut = [int(((i / 255.0) ** g) * 255 + 0.5) for i in range(256)]
+			LUT = render_game._gamma_lut  # type: ignore[attr-defined]
+			def _gc(v: int) -> int: return LUT[v]
+		else:
+			def _gc(v: int) -> int: return v
 		# Draw with partial off-screen effect via per-pixel plot
 		def blit(img, ox):
 			if img is None:
@@ -78,7 +87,7 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 					else:
 						r, g, b = val[:3]
 					try:
-						canvas.SetPixel(px, py, int(r), int(g), int(b))  # type: ignore[attr-defined]
+						canvas.SetPixel(px, py, _gc(int(r)), _gc(int(g)), _gc(int(b)))  # type: ignore[attr-defined]
 					except Exception:
 						pass
 		# Left & right logos (slightly shifted)
@@ -201,11 +210,11 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 	time.sleep(hold)
 
 
-def cycle_games(matrix, games: Iterable[MLBGame], *, show_leaders: bool = True, per_game_seconds: float = 5.0, show_logos: bool = True):
+def cycle_games(matrix, games: Iterable[MLBGame], *, show_leaders: bool = True, per_game_seconds: float = 5.0, show_logos: bool = True, gamma_correct: bool = False):
 	for g in games:
-		render_game(matrix, g, leaders=False, hold=per_game_seconds, show_logos=show_logos, big_layout=show_logos)
+		render_game(matrix, g, leaders=False, hold=per_game_seconds, show_logos=show_logos, big_layout=show_logos, gamma_correct=gamma_correct)
 		if show_leaders and not show_logos:  # skip extra leader frame in big layout for now
-			render_game(matrix, g, leaders=True, hold=per_game_seconds / 2, show_logos=show_logos, big_layout=False)
+			render_game(matrix, g, leaders=True, hold=per_game_seconds / 2, show_logos=show_logos, big_layout=False, gamma_correct=gamma_correct)
 
 
 __all__ = ["cycle_games", "render_game"]
