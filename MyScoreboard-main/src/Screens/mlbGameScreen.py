@@ -119,7 +119,7 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 						except Exception: pass
 			if l_med: blit_med(l_med, 0, 0)
 			if r_med: blit_med(r_med, width - r_med.size[0], 0)
-			def last_name(obj):
+			def last_name(obj, role: str):
 				"""Extract probable pitcher's last name from various possible structures.
 				Supports attributes or dict keys: probable_pitcher, starting_pitcher, pitcher, probables(list)."""
 				# 1. Direct attributes/dict entries
@@ -148,6 +148,40 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 							dsp = item.get('displayName') or item.get('fullName')
 							if dsp:
 								candidates.append(dsp)
+				# 2b. Fallback: search raw competitors structure if still empty
+				if not candidates:
+					raw = getattr(game, 'raw', {}) or {}
+					comps = []
+					# ESPN style sometimes under competitions[0].competitors
+					if isinstance(raw, dict):
+						if 'competitors' in raw:
+							comps = raw.get('competitors') or []
+						elif 'competitions' in raw:
+							try:
+								comps = (raw['competitions'][0] or {}).get('competitors', [])
+							except Exception:
+								comps = []
+					if isinstance(comps, list):
+						for c in comps:
+							if not isinstance(c, dict):
+								continue
+							if c.get('homeAway') != role:
+								continue
+							# look in competitor probables
+							plist = c.get('probables') or []
+							for item in plist:
+								if not isinstance(item, dict):
+									continue
+								ath = item.get('athlete') or {}
+								if isinstance(ath, dict):
+									full = ath.get('fullName') or ath.get('displayName') or ath.get('shortName')
+									if full:
+										candidates.append(full)
+								else:
+									# direct item names
+									full = item.get('displayName') or item.get('fullName')
+									if full:
+										candidates.append(full)
 				# 3. Reduce candidates to last name
 				for name in candidates:
 					if not name:
@@ -167,7 +201,7 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 						if parts:
 							return parts[-1][:8].upper()
 				return ""
-			away_p = last_name(game.away); home_p = last_name(game.home)
+			away_p = last_name(game.away, 'away'); home_p = last_name(game.home, 'home')
 			if l_med and away_p:
 				w_logo = l_med.size[0]; px = max(0, (w_logo - len(away_p)*4)//2)
 				graphics.DrawText(canvas, font, px, MED + 1, white, away_p)
@@ -263,7 +297,7 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 			if r_med:
 				blit_med(r_med, width - r_med.size[0], 0)
 			# Probable pitcher last names (fallback if not available)
-			def last_name(obj):
+			def last_name(obj, role: str):
 				candidates = []
 				for attr in ("probable_pitcher", "starting_pitcher", "pitcher"):
 					val = getattr(obj, attr, None)
@@ -287,6 +321,31 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 							dsp = item.get('displayName') or item.get('fullName')
 							if dsp:
 								candidates.append(dsp)
+				if not candidates:
+					raw = getattr(game, 'raw', {}) or {}
+					comps = []
+					if isinstance(raw, dict):
+						if 'competitors' in raw:
+							comps = raw.get('competitors') or []
+						elif 'competitions' in raw:
+							try:
+								comps = (raw['competitions'][0] or {}).get('competitors', [])
+							except Exception:
+								comps = []
+					if isinstance(comps, list):
+						for c in comps:
+							if not isinstance(c, dict): continue
+							if c.get('homeAway') != role: continue
+							plist = c.get('probables') or []
+							for item in plist:
+								if not isinstance(item, dict): continue
+								ath = item.get('athlete') or {}
+								if isinstance(ath, dict):
+									full = ath.get('fullName') or ath.get('displayName') or ath.get('shortName')
+									if full: candidates.append(full)
+								else:
+									full = item.get('displayName') or item.get('fullName')
+									if full: candidates.append(full)
 				for name in candidates:
 					if not name: continue
 					if isinstance(name, dict):
@@ -303,8 +362,8 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 						if parts:
 							return parts[-1][:8].upper()
 				return ""
-			away_p = last_name(game.away)
-			home_p = last_name(game.home)
+			away_p = last_name(game.away, 'away')
+			home_p = last_name(game.home, 'home')
 			# Font metrics: tiny font char width 4 -> center under each logo width
 			if l_med and away_p:
 				w_logo = l_med.size[0]
