@@ -49,9 +49,12 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 	if show_logos and big_layout and width >= 48 and height >= 24:
 		# Big side logo layout
 		BIG = 28
+		MEDIUM = 22
+		SMALL = 14
+		EXTRA_SMALL = 10
 		# Fetch processed logos (background removed)
-		left_img = get_processed_logo('mlb', game.away.abbr, url=game.away.logo, size=BIG, remove_bg=True)
-		right_img = get_processed_logo('mlb', game.home.abbr, url=game.home.logo, size=BIG, remove_bg=True)
+		left_img = get_processed_logo('mlb', game.away.abbr, url=game.away.logo, size=MEDIUM, remove_bg=True)
+		right_img = get_processed_logo('mlb', game.home.abbr, url=game.home.logo, size=MEDIUM, remove_bg=True)
 		# Draw with partial off-screen effect via per-pixel plot
 		def blit(img, ox):
 			if img is None:
@@ -86,50 +89,49 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 		# Right logo partly off right edge
 		if right_img:
 			blit(right_img, 64 - (BIG - 4))
-		# Construct middle/status and side texts with new layout requirements:
-		# inning above score, outs below score
-		inning_line = game._period_text()  # already condensed (e.g., T5, B7, In 1)
-		outs_line = game.outs_text
-		# Scores (center combined)
-		score_left = f"{game.away.score}"
-		score_right = f"{game.home.score}"
-		# Choose leader line (batting or pitching) based on availability
-		leader_left = ''
-		leader_right = ''
-		leaders = game.leaders
-		# Determine which leader belongs to which teamId
-		for key in ("batting", "pitching"):
-			info = leaders.get(key)
-			if isinstance(info, dict):
-				tid = info.get('teamId')
-				line = info.get('athlete', '') + ' ' + (info.get('display', '') or '')
-				if tid == game.away.id and not leader_left:
-					leader_left = line[:14]
-				elif tid == game.home.id and not leader_right:
-					leader_right = line[:14]
-		# Fallback abbreviations
-		away_abbr = game.away.abbr
-		home_abbr = game.home.abbr
-		from ..Screens.common import graphics, FontManager, center_x  # reuse font
+		# New top-left stack layout per spec
+		from ..Screens.common import graphics, FontManager
 		font = FontManager.get_font()
 		white = graphics.Color(255,255,255)
-		# Centered inning line
-		if inning_line:
-			mx_inn = center_x(inning_line[:6])
-			graphics.DrawText(canvas, font, mx_inn, 8, white, inning_line[:6])
-		# Score centered
-		score_combo = f"{score_left}-{score_right}"[:9]
-		mx_sc = center_x(score_combo)
-		graphics.DrawText(canvas, font, mx_sc, 18, white, score_combo)
-		# Outs line
-		if outs_line:
-			mx_out = center_x(outs_line[:8])
-			graphics.DrawText(canvas, font, mx_out, 26, white, outs_line[:8])
-		# Batter (left) under left logo, Pitcher (right) under right logo
+		# Line 1: T/B + inning number + outs (e.g., T6 2O)
+		inning_line = game._period_text()
+		half_char = 'T' if game.half.startswith('top') else ('B' if game.half.startswith('bot') else '')
+		inning_num = ''.join(ch for ch in inning_line if ch.isdigit()) if inning_line else ''
+		outs_val = game.raw.get('outs')
+		outs_part = f" {outs_val}O" if isinstance(outs_val, int) else ''
+		state_line = f"{half_char}{inning_num}{outs_part}"[:7]
+		graphics.DrawText(canvas, font, 0, 7, white, state_line)
+		# Line 2: Arrow pointing to batting team abbreviation
+		batting_abbr = game.away.abbr if half_char == 'T' else game.home.abbr
+		arrow_line = f"> {batting_abbr}"[:7]
+		graphics.DrawText(canvas, font, 0, 13, white, arrow_line)
+		# Line 3: Base diamond (using small 5x5 area) origin (0,14)
+		b1,b2,b3 = game.bases
+		occ = (255,215,0)  # gold
+		emp = (70,70,70)
+		def setp(x,y,color):
+			try: canvas.SetPixel(x,y,*color)
+			except Exception: pass
+		# Coordinates shaped like diamond
+		# Second base (2,15)
+		setp(2,15, *(occ if b2 else emp))
+		# First (4,17)
+		setp(4,17, *(occ if b1 else emp))
+		# Third (0,17)
+		setp(0,17, *(occ if b3 else emp))
+		# Home (2,19) faint when no runner
+		setp(2,19, *( (180,180,180) ))
+		# Optional connecting outline (light)
+		for (x,y) in [(1,16),(2,17),(3,16),(2,15),(1,16)]:
+			setp(x,y,(40,40,40))
+		# Line 4: Score just below (0,25)
+		score_combo = f"{game.away.score}-{game.home.score}"[:9]
+		graphics.DrawText(canvas, font, 0, 25, white, score_combo)
+		# Batter/Pitcher right side small labels (to avoid overlap with logos auto region)
 		if game.batter:
-			graphics.DrawText(canvas, font, 2, 30, white, game.batter[:12])
+			graphics.DrawText(canvas, font, 24, 11, white, game.batter[:8])
 		if game.pitcher:
-			graphics.DrawText(canvas, font, 64 - (len(game.pitcher[:12])*4) - 2, 30, white, game.pitcher[:12])
+			graphics.DrawText(canvas, font, 24, 19, white, game.pitcher[:8])
 	else:
 		# Fallback to original compact layout
 		lines_raw = game_leaders_lines(game) if leaders else game_primary_lines(game)
