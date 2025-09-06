@@ -7,9 +7,25 @@ class MLBGame(BaseGame):
 	sport = "mlb"
 
 	def _period_text(self) -> str:  # inning
+		# Prefer explicit display_inning from raw if present
+		disp = self.raw.get("display_inning")
+		if disp:
+			return disp
 		if self.period:
-			return f"In {self.period}"  # Keep short for display matrix
+			return f"In {self.period}"  # fallback
 		return ""
+
+	@property
+	def outs_text(self) -> str:
+		return self.raw.get("outs_text") or ""
+
+	@property
+	def batter(self) -> str:
+		return (self.raw.get("batter") or "")[:14]
+
+	@property
+	def pitcher(self) -> str:
+		return (self.raw.get("pitcher") or "")[:14]
 
 	def leaders_lines(self) -> List[str]:
 		lines: List[str] = []

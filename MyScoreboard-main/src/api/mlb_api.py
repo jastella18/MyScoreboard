@@ -103,6 +103,26 @@ class mlb_api:
         home_block = next((c for c in competitors if c.get("homeAway") == "home"), competitors[0] if competitors else {})
         away_block = next((c for c in competitors if c.get("homeAway") == "away"), competitors[1] if len(competitors) > 1 else {})
         situation = comp.get("situation", {})
+        # Extract richer situation data (inning half, outs, batter, pitcher)
+        half = (situation.get("halfInning") or situation.get("inningHalf") or "").lower()
+        inning_num = situation.get("inning") or status_block.get("period")
+        if half and inning_num:
+            if half.startswith("top"):
+                display_inning = f"T{inning_num}"
+            elif half.startswith("bot") or half.startswith("bottom"):
+                display_inning = f"B{inning_num}"
+            else:
+                display_inning = f"In {inning_num}"
+        else:
+            display_inning = f"In {status_block.get('period')}" if status_block.get('period') else ''
+        outs = situation.get("outs")
+        outs_text = None
+        if isinstance(outs, int):
+            outs_text = f"{outs} OUT" if outs == 1 else f"{outs} OUTS"
+        batter_block = situation.get("batter") or {}
+        pitcher_block = situation.get("pitcher") or {}
+        batter_name = batter_block.get("shortName") or batter_block.get("displayName")
+        pitcher_name = pitcher_block.get("shortName") or pitcher_block.get("displayName")
         return {
             "id": event.get("id"),
             "sport": "mlb",
@@ -116,6 +136,11 @@ class mlb_api:
             "linescore": mlb_api._extract_linescore(comp),
             "leaders": mlb_api._extract_leaders(comp),
             "last_play": (situation.get("lastPlay") or {}).get("text"),
+            "display_inning": display_inning,
+            "outs": outs,
+            "outs_text": outs_text,
+            "batter": batter_name,
+            "pitcher": pitcher_name,
         }
 
     @staticmethod

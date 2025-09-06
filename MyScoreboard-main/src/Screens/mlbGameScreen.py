@@ -82,10 +82,11 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 		# Right logo partly off right edge
 		if right_img:
 			blit(right_img, 64 - (BIG - 4))
-		# Construct middle/status and side texts
-		# Central inning/outs placeholder (need extended API for outs)
-		middle = game.status_line()
-		# Scores
+		# Construct middle/status and side texts with new layout requirements:
+		# inning above score, outs below score
+		inning_line = game._period_text()  # already condensed (e.g., T5, B7, In 1)
+		outs_line = game.outs_text
+		# Scores (center combined)
 		score_left = f"{game.away.score}"
 		score_right = f"{game.home.score}"
 		# Choose leader line (batting or pitching) based on availability
@@ -108,20 +109,23 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 		from ..Screens.common import graphics, FontManager, center_x  # reuse font
 		font = FontManager.get_font()
 		white = graphics.Color(255,255,255)
-		# Away abbreviation top-left region
-		graphics.DrawText(canvas, font, 2, 8, white, away_abbr)
-		graphics.DrawText(canvas, font, 64 - (len(home_abbr)*4) - 2, 8, white, home_abbr)
-		# Scores near center side of logos
-		graphics.DrawText(canvas, font, 24, 16, white, score_left)
-		graphics.DrawText(canvas, font, 64 - 28, 16, white, score_right)
-		# Middle line
-		mx = center_x(middle)
-		graphics.DrawText(canvas, font, mx, 26, white, middle[:12])
-		# Leader lines under scores if space
-		if leader_left:
-			graphics.DrawText(canvas, font, 2, 30, white, leader_left[:14])
-		if leader_right:
-			graphics.DrawText(canvas, font, 64 - (len(leader_right[:14])*4) - 2, 30, white, leader_right[:14])
+		# Centered inning line
+		if inning_line:
+			mx_inn = center_x(inning_line[:6])
+			graphics.DrawText(canvas, font, mx_inn, 8, white, inning_line[:6])
+		# Score centered
+		score_combo = f"{score_left}-{score_right}"[:9]
+		mx_sc = center_x(score_combo)
+		graphics.DrawText(canvas, font, mx_sc, 18, white, score_combo)
+		# Outs line
+		if outs_line:
+			mx_out = center_x(outs_line[:8])
+			graphics.DrawText(canvas, font, mx_out, 26, white, outs_line[:8])
+		# Batter (left) under left logo, Pitcher (right) under right logo
+		if game.batter:
+			graphics.DrawText(canvas, font, 2, 30, white, game.batter[:12])
+		if game.pitcher:
+			graphics.DrawText(canvas, font, 64 - (len(game.pitcher[:12])*4) - 2, 30, white, game.pitcher[:12])
 	else:
 		# Fallback to original compact layout
 		lines_raw = game_leaders_lines(game) if leaders else game_primary_lines(game)
