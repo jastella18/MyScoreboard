@@ -367,11 +367,18 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 	time.sleep(hold)
 
 
-def cycle_games(matrix, games: Iterable[MLBGame], *, show_leaders: bool = True, per_game_seconds: float = 5.0, show_logos: bool = True, gamma_correct: bool = False):
+def cycle_games(matrix, games: Iterable[MLBGame], *, show_leaders: bool = True, per_game_seconds: float = 5.0, pre_game_seconds: float = 2.0, show_logos: bool = True, gamma_correct: bool = False):
+	"""Cycle through MLB games.
+
+	per_game_seconds: default hold time for in-progress / post games.
+	pre_game_seconds: faster hold for pre-game matchups so they rotate more quickly.
+	"""
 	for g in games:
-		render_game(matrix, g, leaders=False, hold=per_game_seconds, show_logos=show_logos, big_layout=show_logos, gamma_correct=gamma_correct)
-		if show_leaders and not show_logos:  # skip extra leader frame in big layout for now
-			render_game(matrix, g, leaders=True, hold=per_game_seconds / 2, show_logos=show_logos, big_layout=False, gamma_correct=gamma_correct)
+		# Choose faster duration for pre-game
+		base_hold = pre_game_seconds if (getattr(g, 'state', '') == 'pre') else per_game_seconds
+		render_game(matrix, g, leaders=False, hold=base_hold, show_logos=show_logos, big_layout=show_logos, gamma_correct=gamma_correct)
+		if show_leaders and not show_logos and getattr(g, 'state', '') != 'pre':  # skip leader frame for pre-game & big layout
+			render_game(matrix, g, leaders=True, hold=base_hold / 2, show_logos=show_logos, big_layout=False, gamma_correct=gamma_correct)
 
 
 __all__ = ["cycle_games", "render_game"]
