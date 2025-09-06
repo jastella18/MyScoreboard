@@ -20,7 +20,7 @@
     },
     "mlb_focus": {
       "rotation": ["mlb"],
-      "mlb": {"show_batting": true, "per_game_seconds": 14, "show_logos": true},
+      "mlb": {"show_batting": false, "per_game_seconds": 5, "show_logos": true},
       "duration_multiplier": 1.2
     }
   }
