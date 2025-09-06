@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 from typing import Iterable, List
 from ..GameClasses.mlbGame import MLBGame
-from ..logo_cache import get_logo, get_logo_from_url
+from ..logo_cache import get_logo, get_logo_from_url, get_processed_logo
 from .common import prepare_lines, draw_frame
 
 
@@ -19,31 +19,88 @@ def game_leaders_lines(game: MLBGame) -> List[str]:
 
 
 
-def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5, show_logos: bool = True):
+def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5, show_logos: bool = True, big_layout: bool = True):
 	canvas = matrix.CreateFrameCanvas()
-	lines_raw = game_leaders_lines(game) if leaders else game_primary_lines(game)
-	# If logos, allow fewer chars (reserve ~16px each side -> ~32px taken -> 32px text area => 8 chars at 4px width)
-	max_chars = 15 if not show_logos else 8
-	lines = prepare_lines(lines_raw, max_lines=4, max_chars=max_chars)
-	if show_logos:
-		left = get_logo('mlb', game.away.abbr) or get_logo_from_url(game.away.logo or '', f"mlb:{game.away.abbr}")
-		right = get_logo('mlb', game.home.abbr) or get_logo_from_url(game.home.logo or '', f"mlb:{game.home.abbr}")
-		# Draw logos at y=0 if available
-		if left is not None:
+	if show_logos and big_layout:
+		# Big side logo layout
+		BIG = 28
+		# Fetch processed logos (background removed)
+		left_img = get_processed_logo('mlb', game.away.abbr, url=game.away.logo, size=BIG, remove_bg=True)
+		right_img = get_processed_logo('mlb', game.home.abbr, url=game.home.logo, size=BIG, remove_bg=True)
+		# Draw with partial off-screen effect via per-pixel plot
+		def blit(img, ox):
+			if img is None:
+				return
 			try:
-				canvas.SetImage(left, 0, 0)  # type: ignore[attr-defined]
+				has_alpha = img.mode == 'RGBA'
 			except Exception:
-				pass
-		if right is not None:
-			try:
-				# place at far right (64 - size)
-				x = 64 - right.width
-				canvas.SetImage(right, x, 0)  # type: ignore[attr-defined]
-			except Exception:
-				pass
-		# Draw text lower to avoid overlapping logos
-		draw_frame(canvas, lines, start_y=18, center=not show_logos or max_chars >= 12)
+				has_alpha = False
+			w, h = img.size
+			pix = img.load()
+			for y in range(h):
+				py = y + 2  # slight vertical offset
+				if py >= 32:
+					break
+				for x in range(w):
+					px = x + ox
+					if px < 0 or px >= 64:
+						continue
+					r, g, b, *rest = pix[x, y]
+					if has_alpha and rest and rest[0] == 0:
+						continue
+					try:
+						canvas.SetPixel(px, py, int(r), int(g), int(b))  # type: ignore[attr-defined]
+					except Exception:
+						pass
+		# Left logo partly off left edge
+		blit(left_img, -4)
+		# Right logo partly off right edge
+		if right_img:
+			blit(right_img, 64 - (BIG - 4))
+		# Construct middle/status and side texts
+		# Central inning/outs placeholder (need extended API for outs)
+		middle = game.status_line()
+		# Scores
+		score_left = f"{game.away.score}"
+		score_right = f"{game.home.score}"
+		# Choose leader line (batting or pitching) based on availability
+		leader_left = ''
+		leader_right = ''
+		leaders = game.leaders
+		# Determine which leader belongs to which teamId
+		for key in ("batting", "pitching"):
+			info = leaders.get(key)
+			if isinstance(info, dict):
+				tid = info.get('teamId')
+				line = info.get('athlete', '') + ' ' + (info.get('display', '') or '')
+				if tid == game.away.id and not leader_left:
+					leader_left = line[:14]
+				elif tid == game.home.id and not leader_right:
+					leader_right = line[:14]
+		# Fallback abbreviations
+		away_abbr = game.away.abbr
+		home_abbr = game.home.abbr
+		from ..Screens.common import graphics, FontManager, center_x  # reuse font
+		font = FontManager.get_font()
+		white = graphics.Color(255,255,255)
+		# Away abbreviation top-left region
+		graphics.DrawText(canvas, font, 2, 8, white, away_abbr)
+		graphics.DrawText(canvas, font, 64 - (len(home_abbr)*4) - 2, 8, white, home_abbr)
+		# Scores near center side of logos
+		graphics.DrawText(canvas, font, 24, 16, white, score_left)
+		graphics.DrawText(canvas, font, 64 - 28, 16, white, score_right)
+		# Middle line
+		mx = center_x(middle)
+		graphics.DrawText(canvas, font, mx, 26, white, middle[:12])
+		# Leader lines under scores if space
+		if leader_left:
+			graphics.DrawText(canvas, font, 2, 30, white, leader_left[:14])
+		if leader_right:
+			graphics.DrawText(canvas, font, 64 - (len(leader_right[:14])*4) - 2, 30, white, leader_right[:14])
 	else:
+		# Fallback to original compact layout
+		lines_raw = game_leaders_lines(game) if leaders else game_primary_lines(game)
+		lines = prepare_lines(lines_raw, max_lines=4, max_chars=15)
 		draw_frame(canvas, lines)
 	canvas = matrix.SwapOnVSync(canvas)
 	time.sleep(hold)
@@ -51,9 +108,9 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 
 def cycle_games(matrix, games: Iterable[MLBGame], *, show_leaders: bool = True, per_game_seconds: float = 5.0, show_logos: bool = True):
 	for g in games:
-		render_game(matrix, g, leaders=False, hold=per_game_seconds / (2 if show_leaders else 1), show_logos=show_logos)
-		if show_leaders:
-			render_game(matrix, g, leaders=True, hold=per_game_seconds / 2, show_logos=show_logos)
+		render_game(matrix, g, leaders=False, hold=per_game_seconds, show_logos=show_logos, big_layout=show_logos)
+		if show_leaders and not show_logos:  # skip extra leader frame in big layout for now
+			render_game(matrix, g, leaders=True, hold=per_game_seconds / 2, show_logos=show_logos, big_layout=False)
 
 
 __all__ = ["cycle_games", "render_game"]

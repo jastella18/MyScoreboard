@@ -71,6 +71,55 @@ def get_logo_from_url(url: str, cache_key: str, size: int = 14):
     except Exception:
         return None
 
-__all__ = ["get_logo", "get_logo_from_url"]
+def _remove_bg(img, tolerance: int = 40):
+    """Return a copy with background (assumed near corner color) made transparent.
+    If Pillow doesn't support alpha on target, we keep RGB but skip background pixels in drawing code.
+    We'll store the processed image with alpha for later per-pixel blit.
+    """
+    try:
+        from PIL import Image  # type: ignore
+    except Exception:
+        return img
+    if img.mode != 'RGB' and img.mode != 'RGBA':
+        img = img.convert('RGB')
+    px0 = img.getpixel((0, 0))
+    if isinstance(px0, int):  # unlikely
+        return img
+    r0, g0, b0 = px0[:3]
+    w, h = img.size
+    new = Image.new('RGBA', (w, h))
+    src = img.load()
+    dst = new.load()
+    for y in range(h):
+        for x in range(w):
+            r, g, b = src[x, y][:3]
+            if abs(r - r0) + abs(g - g0) + abs(b - b0) <= tolerance:
+                dst[x, y] = (0, 0, 0, 0)
+            else:
+                dst[x, y] = (r, g, b, 255)
+    return new
+
+_PROC_CACHE: Dict[Tuple[str, int, str], object] = {}
+
+def get_processed_logo(sport: str, team_abbr: str, *, url: Optional[str], size: int, remove_bg: bool) -> Optional[object]:
+    """High-level accessor returning possibly background-removed, resized logo.
+
+    Order: local cached asset -> remote fetch -> processing -> cache.
+    """
+    base_key = f"{sport}:{team_abbr}".upper()
+    proc_key = (base_key, size, 'nobg' if remove_bg else 'raw')
+    if proc_key in _PROC_CACHE:
+        return _PROC_CACHE[proc_key]
+    img = get_logo(sport, team_abbr, size=size)
+    if img is None and url:
+        img = get_logo_from_url(url, base_key, size=size)
+    if img is None:
+        return None
+    if remove_bg:
+        img = _remove_bg(img)
+    _PROC_CACHE[proc_key] = img
+    return img
+
+__all__ = ["get_logo", "get_logo_from_url", "get_processed_logo"]
 
 __all__ = ["get_logo"]
