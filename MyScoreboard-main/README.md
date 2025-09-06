@@ -30,3 +30,4 @@ frames print to the console (development mode). On a Pi, install
 Edit `config.json` to switch rotation modes (`active_mode`). The app hot-reloads
 this file roughly every 30 seconds.
 
+source /home/jas/scoreenv/bin/activate

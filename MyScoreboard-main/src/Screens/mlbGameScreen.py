@@ -154,10 +154,10 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 			arrow_y = 13
 			if half_side == 'top':  # Away batting
 				arrow_char = '>'  # point toward center from left logo
-				arrow_x = 6  # tuned horizontal position; adjust if needed
+				arrow_x = 31  # tuned horizontal position; adjust if needed
 			else:  # bottom -> home batting
 				arrow_char = '<'
-				arrow_x = 64 - 8  # a few pixels left of right logo cluster
+				arrow_x = 33  # a few pixels left of right logo cluster
 			try:
 				canvas.SetPixel(arrow_x, arrow_y, 255,255,255)  # anchor pixel to ensure visibility on some fonts
 			except Exception:
