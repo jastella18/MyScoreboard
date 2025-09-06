@@ -39,10 +39,11 @@ def get_logo(sport: str, team_abbr: str, size: int = 14):
         return _CACHE[key]
     path = logo_path(sport, team_abbr)
     if not os.path.isfile(path):
-        # Try remote download if we have a previously captured URL in team meta (passed separately later)
         return None
     try:
-        img = Image.open(path).convert('RGB')
+        img = Image.open(path)
+        if img.mode not in ('RGBA','RGB'):
+            img = img.convert('RGBA')
         if img.width != size or img.height != size:
             img = img.resize((size, size), Image.LANCZOS)
         _CACHE[key] = img
@@ -62,7 +63,9 @@ def get_logo_from_url(url: str, cache_key: str, size: int = 14):
         resp = requests.get(url, timeout=3)
         resp.raise_for_status()
         from io import BytesIO
-        img = Image.open(BytesIO(resp.content)).convert('RGB')
+        img = Image.open(BytesIO(resp.content))
+        if img.mode not in ('RGBA','RGB'):
+            img = img.convert('RGBA')
         if img.width != size or img.height != size:
             img = img.resize((size, size), Image.LANCZOS)
         with _LOCK:
@@ -138,7 +141,7 @@ def _remove_bg(img, tolerance: int = 38):
     return out
 
 _PROC_CACHE: Dict[Tuple[str, int, str, int], object] = {}
-_BG_ALGO_VERSION = 2
+_BG_ALGO_VERSION = 3  # bump to invalidate previous RGB-only cached logos
 
 def get_processed_logo(sport: str, team_abbr: str, *, url: Optional[str], size: int, remove_bg: bool) -> Optional[object]:
     """High-level accessor returning possibly background-removed, resized logo.
@@ -160,5 +163,3 @@ def get_processed_logo(sport: str, team_abbr: str, *, url: Optional[str], size: 
     return img
 
 __all__ = ["get_logo", "get_logo_from_url", "get_processed_logo"]
-
-__all__ = ["get_logo"]
