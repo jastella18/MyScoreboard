@@ -133,17 +133,11 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 		if state_line:
 			mx = center_x(state_line[:10])
 			graphics.DrawText(canvas, font, mx, 6, white, state_line[:10])
-		# Arrow graphic pointing toward batting team's logo (row 12)
+		# Centered arrow pointing toward batting team's logo (row 12)
 		arrow_y = 12
-		def setp_raw(x,y,color):
-			try: canvas.SetPixel(x,y,*color)
-			except Exception: pass
-		if half_char == 'T':  # away batting -> arrow left
-			for (dx,dy) in [(32,arrow_y),(31,arrow_y),(30,arrow_y),(31,arrow_y-1),(31,arrow_y+1)]:
-				setp_raw(dx,dy,(255,255,255))
-		else:  # bottom -> arrow right
-			for (dx,dy) in [(32,arrow_y),(33,arrow_y),(34,arrow_y),(33,arrow_y-1),(33,arrow_y+1)]:
-				setp_raw(dx,dy,(255,255,255))
+		arrow_line = '<' if half_char == 'T' else '>'  # Top inning: away batting -> left logo; Bottom: home -> right logo
+		mx_arrow = center_x(arrow_line)
+		graphics.DrawText(canvas, font, mx_arrow, arrow_y, white, arrow_line)
 		# Bases diamond centered around (31,18) (shifted left 1) + outs dots above
 		b1,b2,b3 = game.bases
 		occ = (255,215,0)
