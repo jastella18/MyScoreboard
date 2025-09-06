@@ -1,5 +1,5 @@
 {
-  "active_mode": "nfl_focus",
+  "active_mode": "mlb_focus",
   "modes": {
     "all": {
       "rotation": ["nfl", "mlb", "prem"],
