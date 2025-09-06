@@ -37,11 +37,20 @@ class mlb_api:
         team_info = team_block.get("team", {})
         record_list = team_block.get("record", [])
         record_summary = record_list[0].get("summary") if record_list else None
+        # ESPN often supplies multiple logo sizes in 'logos'; prefer first.
+        logo_url = None
+        logos = team_info.get("logos") or []
+        if logos and isinstance(logos, list):
+            logo_url = logos[0].get("href")
+        if not logo_url:
+            # Some endpoints may have a single 'logo' field.
+            logo_url = team_info.get("logo")
         return {
             "id": team_info.get("id"),
             "abbreviation": team_info.get("abbreviation"),
             "score": team_block.get("score", "0"),
             "record": record_summary,
+            "logo": logo_url,
         }
 
     @staticmethod

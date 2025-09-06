@@ -14,6 +14,7 @@ class TeamSide:
     abbr: str
     score: str
     record: Optional[str]
+    logo: Optional[str] = None  # URL if available
 
     @staticmethod
     def from_dict(d: Dict[str, Any]) -> "TeamSide":
@@ -22,6 +23,7 @@ class TeamSide:
             abbr=d.get("abbreviation") or "???",
             score=str(d.get("score", "0")),
             record=d.get("record"),
+            logo=d.get("logo"),
         )
 
 

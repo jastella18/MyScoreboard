@@ -4,7 +4,7 @@
     "all": {
       "rotation": ["nfl", "mlb", "prem"],
   "nfl": {"show_leaders": true, "leader_mode": "all", "per_game_seconds": 10},
-  "mlb": {"show_batting": true, "per_game_seconds": 10},
+  "mlb": {"show_batting": true, "per_game_seconds": 10, "show_logos": true},
   "prem": {"show_leaders": true, "per_game_seconds": 8},
   "duration_multiplier": 1.2
     },
@@ -20,7 +20,7 @@
     },
     "mlb_focus": {
       "rotation": ["mlb"],
-  "mlb": {"show_batting": true, "per_game_seconds": 14},
+  "mlb": {"show_batting": true, "per_game_seconds": 14, "show_logos": true},
   "duration_multiplier": 1.2
     }
   }

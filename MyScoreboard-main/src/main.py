@@ -132,7 +132,8 @@ def run_rotation(matrix, debug: bool = False):
                 mlb_cfg = last_cfg.get("mlb", {})
                 per = float(mlb_cfg.get("per_game_seconds", 6))
                 per *= float(last_cfg.get("duration_multiplier", 1.0))
-                cycle_mlb_games(matrix, games, show_leaders=True, per_game_seconds=per)
+                show_logos = bool(mlb_cfg.get("show_logos", True))
+                cycle_mlb_games(matrix, games, show_leaders=True, per_game_seconds=per, show_logos=show_logos)
                 if mlb_cfg.get("show_batting", True):
                     cycle_mlb_batting(matrix, games, per_game_seconds=per / 2)
             elif sport == "prem":
