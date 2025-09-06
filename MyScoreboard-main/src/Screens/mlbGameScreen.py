@@ -367,7 +367,7 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 	time.sleep(hold)
 
 
-def cycle_games(matrix, games: Iterable[MLBGame], *, show_leaders: bool = True, per_game_seconds: float = 5.0, pre_game_seconds: float = 2.0, show_logos: bool = True, gamma_correct: bool = False):
+def cycle_games(matrix, games: Iterable[MLBGame], *, show_leaders: bool = True, per_game_seconds: float = 3.0, pre_game_seconds: float = 1.0, show_logos: bool = True, gamma_correct: bool = False):
 	"""Cycle through MLB games.
 
 	per_game_seconds: default hold time for in-progress / post games.
