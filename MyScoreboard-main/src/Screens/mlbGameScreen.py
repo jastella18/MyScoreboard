@@ -106,20 +106,93 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 		state = game.state or ""
 		# Pre-game: show only logos + @time
 		if state == 'pre':
-			# Extract HH:MM from start_time if present
+			# New pre-game layout: medium logos top corners, probable pitcher last names under logos,
+			# bold start time bottom center.
+			MED = 18
+			# Re-fetch smaller logos for this layout to reduce vertical footprint
+			l_med = get_processed_logo('mlb', game.away.abbr, url=game.away.logo, size=MED, remove_bg=True)
+			r_med = get_processed_logo('mlb', game.home.abbr, url=game.home.logo, size=MED, remove_bg=True)
+			def blit_med(img, ox, oy=0):
+				if img is None:
+					return
+				try:
+					has_alpha = img.mode == 'RGBA'
+				except Exception:
+					has_alpha = False
+				w,h = img.size
+				pix = img.load()
+				for y2 in range(h):
+					py = oy + y2
+					if py >= height: break
+					for x2 in range(w):
+						px = ox + x2
+						if px < 0 or px >= width: continue
+						val = pix[x2,y2]
+						if has_alpha and len(val)==4:
+							r,g2,b2,a = val
+							if a < 90: continue
+						else:
+							r,g2,b2 = val[:3]
+						try:
+							canvas.SetPixel(px, py, _gc(int(r)), _gc(int(g2)), _gc(int(b2)))
+						except Exception:
+							pass
+		# Position logos: left at x=0, right at width - logo_w
+			if l_med:
+				blit_med(l_med, 0, 0)
+			if r_med:
+				blit_med(r_med, width - r_med.size[0], 0)
+			# Probable pitcher last names (fallback if not available)
+			def last_name(obj):
+				name = None
+				for attr in ("probable_pitcher", "starting_pitcher", "pitcher"):
+					val = getattr(obj, attr, None)
+					if val:
+						name = val
+						break
+				if not name:
+					return ""
+				if isinstance(name, dict):
+					# attempt keys
+					for k in ("last_name","lname","name_last","last"):
+						if k in name and name[k]:
+							return str(name[k])[:8].upper()
+					# maybe full name string in 'display'
+					for k in ("display","full","name"):
+						if k in name and name[k]:
+							parts = str(name[k]).split()
+							return parts[-1][:8].upper()
+				if isinstance(name, str):
+					parts = name.strip().split()
+					if not parts: return ""
+					return parts[-1][:8].upper()
+				return ""
+			away_p = last_name(game.away)
+			home_p = last_name(game.home)
+			# Font metrics: tiny font char width 4 -> center under each logo width
+			if l_med and away_p:
+				w_logo = l_med.size[0]
+				px = max(0, (w_logo - len(away_p)*4)//2)
+				graphics.DrawText(canvas, font, px, MED + 1, white, away_p)
+			if r_med and home_p:
+				w_logo = r_med.size[0]
+				start_x = width - w_logo + max(0, (w_logo - len(home_p)*4)//2)
+				graphics.DrawText(canvas, font, start_x, MED + 1, white, home_p)
+			# Time bottom center (bold) baseline y=30 (keeps a 1px margin at bottom for readability)
+			bold_font = FontManager.get_font(bold=True)
 			start_iso = getattr(game, 'start_time', None) or game.start_time
 			show_time = ''
 			if isinstance(start_iso, str) and 'T' in start_iso:
-				# Rough parse
 				try:
 					clock_part = start_iso.split('T',1)[1]
 					show_time = clock_part[:5]
 				except Exception:
 					show_time = ''
-			line = f"@ {show_time}" if show_time else "@ TBD"
-			mx = center_x(line[:8])
-			# Pre-game line small bold
-			draw_text_small_bold(canvas, font, mx, 8, white, line[:8])
+			if not show_time:
+				show_time = 'TBD'
+			# Center bold time using 6px width assumption
+			mx_time = center_x_width(show_time, 6)
+			graphics.DrawText(canvas, bold_font, mx_time, 30, white, show_time)
 			canvas = matrix.SwapOnVSync(canvas)
 			time.sleep(hold)
 			return
@@ -165,8 +238,8 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 		state_line = f"{half_label} {inning_num}".strip()
 		if state_line:
 			mx = center_x(state_line[:10])
-			# Use simulated small bold for inning/half line
-			draw_text_small_bold(canvas, font, mx, 5, white, state_line[:10])
+			# Inning/half line regular font
+			graphics.DrawText(canvas, font, mx, 5, white, state_line[:10])
 		# 3. Arrow: place next to batting team's logo (away: left side, home: right side)
 		#    Direction: point inward toward the field/text.
 		if half_side:
