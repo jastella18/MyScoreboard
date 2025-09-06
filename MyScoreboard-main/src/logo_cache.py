@@ -139,31 +139,48 @@ def _remove_bg(img, tolerance: int = 38):
             else:
                 dst[x,y] = (r,g,b,255)
 
-    # Fringe cleanup: remove 1px ring of nearly-background pixels adjacent to transparency
-    edge_tol = int(tolerance * 1.6)
-    def similar_edge(c):
+    # Fringe cleanup: iterative dilation of transparency into near-background pixels to kill halo
+    edge_tol_primary = int(tolerance * 1.6)
+    edge_tol_secondary = int(tolerance * 2.2)
+    def similar_edge_primary(c):
         r,g,b = c
-        return abs(r-avg[0]) + abs(g-avg[1]) + abs(b-avg[2]) <= edge_tol
-    to_clear = []
+        return abs(r-avg[0]) + abs(g-avg[1]) + abs(b-avg[2]) <= edge_tol_primary
+    def similar_edge_secondary(c):
+        r,g,b = c
+        return abs(r-avg[0]) + abs(g-avg[1]) + abs(b-avg[2]) <= edge_tol_secondary
+    # Pass 1: primary threshold
+    for _ in range(2):  # two iterations
+        to_clear = []
+        for y in range(h):
+            for x in range(w):
+                r,g,b,a = dst[x,y]
+                if a == 0:
+                    continue
+                if not similar_edge_primary((r,g,b)):
+                    continue
+                for nx,ny in ((x+1,y),(x-1,y),(x,y+1),(x,y-1)):
+                    if 0 <= nx < w and 0 <= ny < h and dst[nx,ny][3] == 0:
+                        to_clear.append((x,y)); break
+        for x,y in to_clear:
+            dst[x,y] = (0,0,0,0)
+    # Pass 2: secondary (looser) only one iteration
+    to_clear2 = []
     for y in range(h):
         for x in range(w):
-            pr,pg,pb,pa = dst[x,y]
-            if pa == 0:
+            r,g,b,a = dst[x,y]
+            if a == 0:
                 continue
-            if not similar_edge((pr,pg,pb)):
+            if not similar_edge_secondary((r,g,b)):
                 continue
-            # If any neighbor transparent mark for removal
             for nx,ny in ((x+1,y),(x-1,y),(x,y+1),(x,y-1)):
-                if 0 <= nx < w and 0 <= ny < h:
-                    if dst[nx,ny][3] == 0:
-                        to_clear.append((x,y))
-                        break
-    for x,y in to_clear:
+                if 0 <= nx < w and 0 <= ny < h and dst[nx,ny][3] == 0:
+                    to_clear2.append((x,y)); break
+    for x,y in to_clear2:
         dst[x,y] = (0,0,0,0)
     return out
 
 _PROC_CACHE: Dict[Tuple[str, int, str, int], object] = {}
-_BG_ALGO_VERSION = 4  # bump to invalidate previous cached versions after fringe fix
+_BG_ALGO_VERSION = 5  # bump after aggressive halo removal
 
 def get_processed_logo(sport: str, team_abbr: str, *, url: Optional[str], size: int, remove_bg: bool) -> Optional[object]:
     """High-level accessor returning possibly background-removed, resized logo.
