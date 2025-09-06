@@ -120,19 +120,52 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 			if l_med: blit_med(l_med, 0, 0)
 			if r_med: blit_med(r_med, width - r_med.size[0], 0)
 			def last_name(obj):
-				name = None
+				"""Extract probable pitcher's last name from various possible structures.
+				Supports attributes or dict keys: probable_pitcher, starting_pitcher, pitcher, probables(list)."""
+				# 1. Direct attributes/dict entries
+				candidates = []
 				for attr in ("probable_pitcher", "starting_pitcher", "pitcher"):
 					val = getattr(obj, attr, None)
-					if val: name = val; break
-				if not name: return ""
-				if isinstance(name, dict):
-					for k in ("last_name","lname","name_last","last"):
-						if k in name and name[k]: return str(name[k])[:8].upper()
-					for k in ("display","full","name"):
-						if k in name and name[k]:
-							parts = str(name[k]).split(); return parts[-1][:8].upper()
-				if isinstance(name, str):
-					parts = name.strip().split(); return parts[-1][:8].upper() if parts else ""
+					if not val and isinstance(obj, dict):
+						val = obj.get(attr)
+					if val:
+						candidates.append(val)
+				# 2. Probables list (ESPn style): obj.probables -> list of dicts with athlete.fullName / displayName
+				prob_list = getattr(obj, 'probables', None)
+				if not prob_list and isinstance(obj, dict):
+					prob_list = obj.get('probables')
+				if isinstance(prob_list, (list, tuple)) and prob_list:
+					for item in prob_list:
+						if not isinstance(item, dict):
+							continue
+						ath = item.get('athlete') or {}
+						if isinstance(ath, dict):
+							full = ath.get('fullName') or ath.get('displayName') or ath.get('shortName')
+							if full:
+								candidates.append(full)
+						else:
+							# maybe item itself has displayName
+							dsp = item.get('displayName') or item.get('fullName')
+							if dsp:
+								candidates.append(dsp)
+				# 3. Reduce candidates to last name
+				for name in candidates:
+					if not name:
+						continue
+					# Nested dict candidate
+					if isinstance(name, dict):
+						for k in ("last_name","lname","name_last","last"):
+							if k in name and name[k]:
+								ln = str(name[k]).split()[-1]
+								return ln[:8].upper()
+						for k in ("display","full","name"):
+							if k in name and name[k]:
+								ln = str(name[k]).split()[-1]
+								return ln[:8].upper()
+					elif isinstance(name, str):
+						parts = name.strip().split()
+						if parts:
+							return parts[-1][:8].upper()
 				return ""
 			away_p = last_name(game.away); home_p = last_name(game.home)
 			if l_med and away_p:
@@ -231,28 +264,44 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 				blit_med(r_med, width - r_med.size[0], 0)
 			# Probable pitcher last names (fallback if not available)
 			def last_name(obj):
-				name = None
+				candidates = []
 				for attr in ("probable_pitcher", "starting_pitcher", "pitcher"):
 					val = getattr(obj, attr, None)
+					if not val and isinstance(obj, dict):
+						val = obj.get(attr)
 					if val:
-						name = val
-						break
-				if not name:
-					return ""
-				if isinstance(name, dict):
-					# attempt keys
-					for k in ("last_name","lname","name_last","last"):
-						if k in name and name[k]:
-							return str(name[k])[:8].upper()
-					# maybe full name string in 'display'
-					for k in ("display","full","name"):
-						if k in name and name[k]:
-							parts = str(name[k]).split()
+						candidates.append(val)
+				prob_list = getattr(obj, 'probables', None)
+				if not prob_list and isinstance(obj, dict):
+					prob_list = obj.get('probables')
+				if isinstance(prob_list, (list, tuple)) and prob_list:
+					for item in prob_list:
+						if not isinstance(item, dict):
+							continue
+						ath = item.get('athlete') or {}
+						if isinstance(ath, dict):
+							full = ath.get('fullName') or ath.get('displayName') or ath.get('shortName')
+							if full:
+								candidates.append(full)
+						else:
+							dsp = item.get('displayName') or item.get('fullName')
+							if dsp:
+								candidates.append(dsp)
+				for name in candidates:
+					if not name: continue
+					if isinstance(name, dict):
+						for k in ("last_name","lname","name_last","last"):
+							if k in name and name[k]:
+								ln = str(name[k]).split()[-1]
+								return ln[:8].upper()
+						for k in ("display","full","name"):
+							if k in name and name[k]:
+								ln = str(name[k]).split()[-1]
+								return ln[:8].upper()
+					elif isinstance(name, str):
+						parts = name.strip().split()
+						if parts:
 							return parts[-1][:8].upper()
-				if isinstance(name, str):
-					parts = name.strip().split()
-					if not parts: return ""
-					return parts[-1][:8].upper()
 				return ""
 			away_p = last_name(game.away)
 			home_p = last_name(game.home)
