@@ -123,6 +123,10 @@ class mlb_api:
         pitcher_block = situation.get("pitcher") or {}
         batter_name = batter_block.get("shortName") or batter_block.get("displayName")
         pitcher_name = pitcher_block.get("shortName") or pitcher_block.get("displayName")
+        # Base occupancy + half inning
+        on_first = bool(situation.get("onFirst"))
+        on_second = bool(situation.get("onSecond"))
+        on_third = bool(situation.get("onThird"))
         return {
             "id": event.get("id"),
             "sport": "mlb",
@@ -141,6 +145,10 @@ class mlb_api:
             "outs_text": outs_text,
             "batter": batter_name,
             "pitcher": pitcher_name,
+            "half": half,
+            "on_first": on_first,
+            "on_second": on_second,
+            "on_third": on_third,
         }
 
     @staticmethod

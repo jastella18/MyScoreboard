@@ -114,11 +114,11 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 			except Exception: pass
 		# Coordinates shaped like diamond
 		# Second base (2,15)
-		setp(2,15, *(occ if b2 else emp))
+		setp(2,15, occ if b2 else emp)
 		# First (4,17)
-		setp(4,17, *(occ if b1 else emp))
+		setp(4,17, occ if b1 else emp)
 		# Third (0,17)
-		setp(0,17, *(occ if b3 else emp))
+		setp(0,17, occ if b3 else emp)
 		# Home (2,19) faint when no runner
 		setp(2,19, *( (180,180,180) ))
 		# Optional connecting outline (light)
