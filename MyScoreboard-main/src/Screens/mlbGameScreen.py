@@ -278,11 +278,10 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 			char_w = 4
 			text_px = len(scroll_text) * char_w
 			loop_px = text_px + width
-			# Frame timing
+			# Frame timing (run full scroll irrespective of requested hold so full venue shows)
 			step_delay = 0.08
-			max_frames = max(1, int(hold / step_delay))
-			frames_needed = loop_px  # shift one pixel per frame
-			frames = min(max_frames, frames_needed)
+			frames_needed = loop_px  # shift one pixel per frame across entire text + screen width
+			frames = frames_needed
 			for frame in range(frames):
 				canvas.Clear()
 				# Redraw logos
@@ -299,9 +298,9 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 					name_txt = _fit_name(home_p, w_logo)
 					start_x = width - w_logo + max(0, (w_logo - len(name_txt)*char_w)//2)
 					graphics.DrawText(canvas, font, start_x, name_y, white, name_txt)
-				# Time at top center (baseline y=6)
+				# Time lowered slightly for 32px panel so glyph not clipped by logos
 				mx_time = center_x_width(show_time, 6)
-				time_y = 6
+				time_y = 9
 				graphics.DrawText(canvas, bold_font, mx_time, time_y, white, show_time)
 				# Scroll venue along bottom (baseline y=31) using small font
 				offset = frame % loop_px
@@ -508,9 +507,8 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 			text_px = len(scroll_text) * char_w
 			loop_px = text_px + width
 			step_delay = 0.08
-			max_frames = max(1, int(hold / step_delay))
 			frames_needed = loop_px
-			frames = min(max_frames, frames_needed)
+			frames = frames_needed
 			for frame in range(frames):
 				canvas.Clear()
 				# Re-draw logos
@@ -527,9 +525,9 @@ def render_game(matrix, game: MLBGame, leaders: bool = False, hold: float = 2.5,
 					name_txt = _fit_name(home_p, w_logo)
 					start_x = width - w_logo + max(0, (w_logo - len(name_txt)*char_w)//2)
 					graphics.DrawText(canvas, font, start_x, name_y, white, name_txt)
-				# Time top center
+				# Time lowered for visibility
 				mx_time = center_x_width(show_time, 6)
-				graphics.DrawText(canvas, bold_font, mx_time, 6, white, show_time)
+				graphics.DrawText(canvas, bold_font, mx_time, 10, white, show_time)
 				# Scroll venue bottom
 				offset = frame % loop_px
 				start_x_px = width - offset
