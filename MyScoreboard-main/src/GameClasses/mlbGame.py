@@ -27,6 +27,18 @@ class MLBGame(BaseGame):
 	def pitcher(self) -> str:
 		return (self.raw.get("pitcher") or "")[:14]
 
+	@property
+	def half(self) -> str:
+		return (self.raw.get("half") or "").lower()
+
+	@property
+	def bases(self):
+		return (
+			bool(self.raw.get("on_first")),
+			bool(self.raw.get("on_second")),
+			bool(self.raw.get("on_third")),
+		)
+
 	def leaders_lines(self) -> List[str]:
 		lines: List[str] = []
 		pitching = self.leaders.get("pitching")
