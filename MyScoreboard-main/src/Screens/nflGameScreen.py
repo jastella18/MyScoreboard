@@ -211,8 +211,8 @@ def render_game(matrix, game: NFLGame, leaders: bool = False, hold: float = 2.5,
 		# Centered numeric score only (no team abbreviations) mid-screen (y ~ 16)
 		score_line = f"{game.away.score}-{game.home.score}"
 		cx_score = center_x_width(score_line, 6)
-		# Place score a few pixels below logos (logo height + 4, capped)
-		score_y = min(height - 12, SM + 4)
+		# Keep score near top (fixed y=12) while logos remain at very top corners
+		score_y = 12
 		graphics.DrawText(canvas, bold_font, cx_score, score_y, white, score_line)
 		# FINAL just below score
 		final_label = 'FINAL'
