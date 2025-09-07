@@ -147,7 +147,8 @@ def render_game(matrix, game: NFLGame, leaders: bool = False, hold: float = 2.5,
 		char_w = 4
 		text_px = len(scroll_text)*char_w
 		loop_px = text_px + width
-		step_delay = 0.08
+		# Faster scroll for leaders (was 0.08)
+		step_delay = 0.05
 		frames = loop_px
 		for frame in range(frames):
 			# (No clear to preserve logos each frame -> redraw for smooth scroll)
@@ -177,24 +178,23 @@ def render_game(matrix, game: NFLGame, leaders: bool = False, hold: float = 2.5,
 			time.sleep(step_delay)
 		return
 
-	# Enhanced FINAL (post-game) layout: large partially off-screen logos, side-by-side scores, FINAL under scores, scrolling leaders bottom
+	# FINAL layout (post-game): small logos top corners, centered score, FINAL label, scrolling leaders bottom
 	if show_logos and (game.state or '') == 'post' and width >= 48 and height >= 24:
-		from .common import graphics, FontManager
+		from .common import graphics, FontManager, center_x_width
 		font = FontManager.get_font()
 		bold_font = FontManager.get_font(bold=True)
 		white = graphics.Color(255,255,255)
-		# Large logos (size 32) deliberately drawn partially off screen
-		BIG = 32
-		l_big = get_processed_logo('nfl', game.away.abbr, url=getattr(game.away, 'logo', None), size=BIG, remove_bg=True)
-		r_big = get_processed_logo('nfl', game.home.abbr, url=getattr(game.home, 'logo', None), size=BIG, remove_bg=True)
-		def blit_big(img, ox, oy=-2):
+		SM = 14
+		l_sm = get_processed_logo('nfl', game.away.abbr, url=getattr(game.away, 'logo', None), size=SM, remove_bg=True)
+		r_sm = get_processed_logo('nfl', game.home.abbr, url=getattr(game.home, 'logo', None), size=SM, remove_bg=True)
+		def blit_sm(img, ox, oy=0):
 			if img is None: return
 			try: has_alpha = img.mode == 'RGBA'
 			except Exception: has_alpha = False
 			w,h = img.size; pix = img.load()
 			for y2 in range(h):
 				py = oy + y2
-				if py < 0 or py >= height: continue
+				if py >= height: break
 				for x2 in range(w):
 					px = ox + x2
 					if px < 0 or px >= width: continue
@@ -206,23 +206,17 @@ def render_game(matrix, game: NFLGame, leaders: bool = False, hold: float = 2.5,
 						r,g2,b2 = val[:3]
 					try: canvas.SetPixel(px, py, int(r), int(g2), int(b2))
 					except Exception: pass
-		# Draw partially off (left extends -6, right extends beyond width+6)
-		if l_big: blit_big(l_big, -6, -2)
-		if r_big: blit_big(r_big, width - (r_big.size[0]-6), -2)
-		# Scores near each logo (vertical mid-ish ~14)
-		away_score_txt = str(game.away.score)
-		home_score_txt = str(game.home.score)
-		# Left score sits just to right of left visible boundary (x ~ 12)
-		graphics.DrawText(canvas, bold_font, 12, 14, white, away_score_txt)
-		# Right score sits left of right visible edge (x ~ width-18 depending on digits)
-		rsx = width - 18
-		if len(home_score_txt) == 1:
-			rsx = width - 14
-		graphics.DrawText(canvas, bold_font, rsx, 14, white, home_score_txt)
-		# Small dash centered between scores (y~14)
-		graphics.DrawText(canvas, font, width//2 - 2, 14, white, '-')
-		# FINAL label under scores (y ~ 22)
-		graphics.DrawText(canvas, font, width//2 - 10, 22, white, 'FINAL')
+		if l_sm: blit_sm(l_sm, 0, 0)
+		if r_sm: blit_sm(r_sm, width - r_sm.size[0], 0)
+		# Centered score line mid-screen (y ~ 16)
+		score_line = f"{game.away.abbr} {game.away.score}-{game.home.score} {game.home.abbr}"
+		cx_score = center_x_width(score_line, 6)
+		score_y = height // 2
+		graphics.DrawText(canvas, bold_font, cx_score, score_y, white, score_line)
+		# FINAL just below score
+		final_label = 'FINAL'
+		cx_final = center_x_width(final_label, 5)
+		graphics.DrawText(canvas, font, cx_final, min(height - 9, score_y + 6), white, final_label)
 		# Leaders scroll bottom
 		leaders = getattr(game, 'leaders', {}) or {}
 		def extract_yards(display: str) -> str:
@@ -251,12 +245,10 @@ def render_game(matrix, game: NFLGame, leaders: bool = False, hold: float = 2.5,
 		step_delay = 0.08
 		for frame in range(loop_px):
 			canvas.Clear()
-			if l_big: blit_big(l_big, -6, -2)
-			if r_big: blit_big(r_big, width - (r_big.size[0]-6), -2)
-			graphics.DrawText(canvas, bold_font, 12, 14, white, away_score_txt)
-			graphics.DrawText(canvas, bold_font, rsx, 14, white, home_score_txt)
-			graphics.DrawText(canvas, font, width//2 - 2, 14, white, '-')
-			graphics.DrawText(canvas, font, width//2 - 10, 22, white, 'FINAL')
+			if l_sm: blit_sm(l_sm, 0, 0)
+			if r_sm: blit_sm(r_sm, width - r_sm.size[0], 0)
+			graphics.DrawText(canvas, bold_font, cx_score, score_y, white, score_line)
+			graphics.DrawText(canvas, font, cx_final, min(height - 9, score_y + 6), white, final_label)
 			offset = frame % (len(scroll_text)*char_w + width)
 			start = width - offset
 			for idx,ch in enumerate(scroll_text):
