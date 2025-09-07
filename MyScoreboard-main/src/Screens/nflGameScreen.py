@@ -148,7 +148,7 @@ def render_game(matrix, game: NFLGame, leaders: bool = False, hold: float = 2.5,
 		text_px = len(scroll_text)*char_w
 		loop_px = text_px + width
 		# Faster scroll for leaders (was 0.08)
-		step_delay = 0.05
+		step_delay = 0.02
 		frames = loop_px
 		for frame in range(frames):
 			# (No clear to preserve logos each frame -> redraw for smooth scroll)
@@ -184,7 +184,7 @@ def render_game(matrix, game: NFLGame, leaders: bool = False, hold: float = 2.5,
 		font = FontManager.get_font()
 		bold_font = FontManager.get_font(bold=True)
 		white = graphics.Color(255,255,255)
-		SM = 14
+		SM = 16  # slightly larger logos
 		l_sm = get_processed_logo('nfl', game.away.abbr, url=getattr(game.away, 'logo', None), size=SM, remove_bg=True)
 		r_sm = get_processed_logo('nfl', game.home.abbr, url=getattr(game.home, 'logo', None), size=SM, remove_bg=True)
 		def blit_sm(img, ox, oy=0):
@@ -211,7 +211,8 @@ def render_game(matrix, game: NFLGame, leaders: bool = False, hold: float = 2.5,
 		# Centered numeric score only (no team abbreviations) mid-screen (y ~ 16)
 		score_line = f"{game.away.score}-{game.home.score}"
 		cx_score = center_x_width(score_line, 6)
-		score_y = height // 2
+		# Place score a few pixels below logos (logo height + 4, capped)
+		score_y = min(height - 12, SM + 4)
 		graphics.DrawText(canvas, bold_font, cx_score, score_y, white, score_line)
 		# FINAL just below score
 		final_label = 'FINAL'
