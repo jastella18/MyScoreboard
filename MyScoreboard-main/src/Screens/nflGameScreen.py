@@ -208,14 +208,15 @@ def render_game(matrix, game: NFLGame, leaders: bool = False, hold: float = 2.5,
 					except Exception: pass
 		if l_sm: blit_sm(l_sm, 0, 0)
 		if r_sm: blit_sm(r_sm, width - r_sm.size[0], 0)
-		# Centered score line mid-screen (y ~ 16)
-		score_line = f"{game.away.abbr} {game.away.score}-{game.home.score} {game.home.abbr}"
+		# Centered numeric score only (no team abbreviations) mid-screen (y ~ 16)
+		score_line = f"{game.away.score}-{game.home.score}"
 		cx_score = center_x_width(score_line, 6)
 		score_y = height // 2
 		graphics.DrawText(canvas, bold_font, cx_score, score_y, white, score_line)
 		# FINAL just below score
 		final_label = 'FINAL'
-		cx_final = center_x_width(final_label, 5)
+		# Dynamically center FINAL (font assumed 4px glyph width)
+		cx_final = center_x_width(final_label, 4)
 		graphics.DrawText(canvas, font, cx_final, min(height - 9, score_y + 6), white, final_label)
 		# Leaders scroll bottom
 		leaders = getattr(game, 'leaders', {}) or {}
