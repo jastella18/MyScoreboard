@@ -242,7 +242,8 @@ def render_game(matrix, game: NFLGame, leaders: bool = False, hold: float = 2.5,
 			parts.append('NO LEADERS DATA')
 		scroll_text = '  '.join(parts).upper()
 		scroll_text = f"  {scroll_text}  "
-		char_w = 4
+		# Use real bold font for scrolling leaders (approx 6px glyph width)
+		char_w = 6
 		loop_px = len(scroll_text)*char_w + width
 		step_delay = 0.08
 		for frame in range(loop_px):
@@ -256,7 +257,7 @@ def render_game(matrix, game: NFLGame, leaders: bool = False, hold: float = 2.5,
 			for idx,ch in enumerate(scroll_text):
 				cx = start + idx*char_w
 				if -char_w <= cx < width:
-					graphics.DrawText(canvas, font, cx, height-1, white, ch)
+					graphics.DrawText(canvas, bold_font, cx, height-1, white, ch)
 			canvas = matrix.SwapOnVSync(canvas)
 			time.sleep(step_delay)
 		return
