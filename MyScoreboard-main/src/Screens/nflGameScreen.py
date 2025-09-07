@@ -177,6 +177,99 @@ def render_game(matrix, game: NFLGame, leaders: bool = False, hold: float = 2.5,
 			time.sleep(step_delay)
 		return
 
+	# Enhanced FINAL (post-game) layout modeled off pre-game
+	if show_logos and (game.state or '') == 'post' and width >= 48 and height >= 24:
+		from .common import graphics, FontManager, center_x_width
+		font = FontManager.get_font()
+		bold_font = FontManager.get_font(bold=True)
+		white = graphics.Color(255,255,255)
+		MED = 18
+		l_med = get_processed_logo('nfl', game.away.abbr, url=getattr(game.away, 'logo', None), size=MED, remove_bg=True)
+		r_med = get_processed_logo('nfl', game.home.abbr, url=getattr(game.home, 'logo', None), size=MED, remove_bg=True)
+		def blit_med(img, ox, oy=0):
+			if img is None: return
+			try: has_alpha = img.mode == 'RGBA'
+			except Exception: has_alpha = False
+			w,h = img.size; pix = img.load()
+			for y2 in range(h):
+				py = oy + y2
+				if py >= height: break
+				for x2 in range(w):
+					px = ox + x2
+					if px < 0 or px >= width: continue
+					val = pix[x2,y2]
+					if has_alpha and len(val)==4:
+						r,g2,b2,a = val
+						if a < 90: continue
+					else:
+						r,g2,b2 = val[:3]
+					try: canvas.SetPixel(px, py, int(r), int(g2), int(b2))
+					except Exception: pass
+		if l_med: blit_med(l_med, 0, 0)
+		if r_med: blit_med(r_med, width - r_med.size[0], 0)
+		# Centered score line (e.g., "NE 24 - 17 NYJ") around y=13 (reuse pre-game time slot)
+		away_seg = f"{game.away.abbr} {game.away.score}"
+		home_seg = f"{game.home.score} {game.home.abbr}"
+		score_line = f"{away_seg} - {home_seg}"
+		cx_score = center_x_width(score_line, 6)
+		graphics.DrawText(canvas, bold_font, cx_score, 13, white, score_line)
+		# FINAL label centered near y=24
+		final_label = "FINAL"
+		cx_final = center_x_width(final_label, 5)
+		graphics.DrawText(canvas, font, cx_final, 24, white, final_label)
+		# Build leaders scroll text (Passing / Rushing / Receiving)
+		leaders = getattr(game, 'leaders', {}) or {}
+		def yards_from_display(disp: str) -> str:
+			if not disp:
+				return ''
+			import re
+			m = re.search(r"(\d+)\s*YDS", disp.upper())
+			if m:
+				return m.group(1)
+			# fallback first number
+			m2 = re.search(r"(\d+)", disp)
+			return m2.group(1) if m2 else disp
+		segments = []
+		if 'passing' in leaders:
+			ld = leaders['passing']; n = (ld.get('athlete') or '')
+			name = n.replace('. ', '.')
+			y = yards_from_display(ld.get('display') or '')
+			if name and y: segments.append(f"P: {name} {y} yds")
+		if 'rushing' in leaders:
+			ld = leaders['rushing']; n = (ld.get('athlete') or '')
+			name = n.replace('. ', '.')
+			y = yards_from_display(ld.get('display') or '')
+			if name and y: segments.append(f"RSH: {name} {y} yds")
+		if 'receiving' in leaders:
+			ld = leaders['receiving']; n = (ld.get('athlete') or '')
+			name = n.replace('. ', '.')
+			y = yards_from_display(ld.get('display') or '')
+			if name and y: segments.append(f"REC: {name} {y} yds")
+		if not segments:
+			segments.append("NO LEADERS DATA")
+		scroll_text = "  ".join(segments)
+		scroll_text = f"  {scroll_text.upper()}  "
+		char_w = 4
+		text_px = len(scroll_text) * char_w
+		loop_px = text_px + width
+		step_delay = 0.08
+		frames = loop_px
+		for frame in range(frames):
+			canvas.Clear()
+			if l_med: blit_med(l_med, 0, 0)
+			if r_med: blit_med(r_med, width - r_med.size[0], 0)
+			graphics.DrawText(canvas, bold_font, cx_score, 13, white, score_line)
+			graphics.DrawText(canvas, font, cx_final, 24, white, final_label)
+			offset = frame % loop_px
+			start_x_px = width - offset
+			for idx, ch in enumerate(scroll_text):
+				cx = start_x_px + idx*char_w
+				if -char_w <= cx < width:
+					graphics.DrawText(canvas, font, cx, height - 1, white, ch)
+			canvas = matrix.SwapOnVSync(canvas)
+			time.sleep(step_delay)
+		return
+
 	# Default/simple layout (in-progress, post, or no logos)
 	lines_raw = game_leaders_lines(game) if leaders else game_primary_lines(game)
 	lines = prepare_lines(lines_raw, max_lines=4, max_chars=15)
