@@ -269,13 +269,12 @@ def render_game(matrix, game: NFLGame, leaders: bool = False, hold: float = 2.5,
 	time.sleep(hold)
 
 
-def cycle_games(matrix, games: Iterable[NFLGame], *, show_leaders: bool = True, per_game_seconds: float = 5.0, pre_game_seconds: float = 3.0, show_logos: bool = True):
+def cycle_games(matrix, games: Iterable[NFLGame], *, show_leaders: bool = False, per_game_seconds: float = 5.0, pre_game_seconds: float = 3.0, show_logos: bool = True):
 	for g in games:
 		is_pre = getattr(g, 'state', '') == 'pre'
 		base_hold = pre_game_seconds if is_pre else per_game_seconds
 		render_game(matrix, g, leaders=False, hold=base_hold, show_logos=show_logos)
-		if show_leaders and not is_pre:
-			render_game(matrix, g, leaders=True, hold=base_hold / 2, show_logos=False)
+		# Leader screens disabled per request; skipping secondary render.
 
 
 __all__ = ["cycle_games", "render_game"]
