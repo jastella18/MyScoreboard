@@ -148,7 +148,7 @@ def render_game(matrix, game: NFLGame, leaders: bool = False, hold: float = 2.5,
 		text_px = len(scroll_text)*char_w
 		loop_px = text_px + width
 		# Faster scroll for leaders (was 0.08)
-		step_delay = 0.001
+		step_delay = 0.005
 		frames = loop_px
 		for frame in range(frames):
 			# (No clear to preserve logos each frame -> redraw for smooth scroll)
@@ -245,7 +245,7 @@ def render_game(matrix, game: NFLGame, leaders: bool = False, hold: float = 2.5,
 		# Use real bold font for scrolling leaders (approx 6px glyph width)
 		char_w = 6
 		loop_px = len(scroll_text)*char_w + width
-		step_delay = 0.08
+		step_delay = 0.008
 		for frame in range(loop_px):
 			canvas.Clear()
 			if l_sm: blit_sm(l_sm, 0, 0)
