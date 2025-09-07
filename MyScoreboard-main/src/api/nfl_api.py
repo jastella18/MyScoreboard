@@ -58,12 +58,13 @@ class nfl_api:
                 "athlete": athlete.get("shortName") or athlete.get("displayName"),
                 "display": first.get("displayValue"),
                 "teamId": (first.get("team") or {}).get("id"),
+                "value": first.get("value"),  # numeric yard value when provided
             }
-            if name == "passingLeader":
+            if name in ("passingLeader", "passingYards"):
                 leaders_out["passing"] = leader_obj
-            elif name == "rushingLeader":
+            elif name in ("rushingLeader", "rushingYards"):
                 leaders_out["rushing"] = leader_obj
-            elif name == "receivingLeader":
+            elif name in ("receivingLeader", "receivingYards"):
                 leaders_out["receiving"] = leader_obj
         return leaders_out
 
